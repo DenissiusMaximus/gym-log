@@ -23,6 +23,8 @@ type Props<T extends string> = {
   onChange: (value: T) => void;
   /** Describes the whole group to assistive technology. */
   accessibilityLabel?: string;
+  /** Check mark on the selected segment (default true). Off, only the fill marks the selection. */
+  showCheck?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -45,10 +47,11 @@ type SegmentProps = {
   label: string;
   selected: boolean;
   position: Position;
+  showCheck: boolean;
   onPress: () => void;
 };
 
-function Segment({ label, selected, position, onPress }: SegmentProps) {
+function Segment({ label, selected, position, showCheck, onPress }: SegmentProps) {
   const { colors } = useTheme();
   const outline = useOutline();
   const reduced = useReducedMotion();
@@ -87,9 +90,11 @@ function Segment({ label, selected, position, onPress }: SegmentProps) {
       accessibilityLabel={label}
       accessibilityState={{ selected, checked: selected }}
     >
-      <Animated.View style={[styles.check, checkStyle]}>
-        <Icon name="check" size={CHECK} color={colors.onSecondaryContainer} />
-      </Animated.View>
+      {showCheck ? (
+        <Animated.View style={[styles.check, checkStyle]}>
+          <Icon name="check" size={CHECK} color={colors.onSecondaryContainer} />
+        </Animated.View>
+      ) : null}
       <Animated.Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[typography.labelLarge, labelColor]}>
         {label}
       </Animated.Text>
@@ -103,12 +108,13 @@ function positionOf(index: number, count: number): Position {
   return index === count - 1 ? 'last' : 'middle';
 }
 
-/** MD3 single-choice segmented button: height 40 (touch 48), 1 px outline, check mark on the selected segment. */
+/** MD3 single-choice segmented button: height 40 (touch 48), 1 px outline, check mark on the selected segment (optional). */
 export function SegmentedButtons<T extends string>({
   options,
   value,
   onChange,
   accessibilityLabel,
+  showCheck = true,
   style,
 }: Props<T>) {
   return (
@@ -122,6 +128,7 @@ export function SegmentedButtons<T extends string>({
             label={option.label}
             selected={option.value === value}
             position={positionOf(index, options.length)}
+            showCheck={showCheck}
             onPress={() => onChange(option.value)}
           />
         </View>

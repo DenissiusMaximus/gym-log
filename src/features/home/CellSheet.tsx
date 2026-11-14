@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { memo, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -123,6 +124,7 @@ type ContentProps = {
 
 function SheetContent({ cell, sheetHeight, onClose }: ContentProps) {
   const { workoutId, exerciseId } = cell;
+  const router = useRouter();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -179,6 +181,11 @@ function SheetContent({ cell, sheetHeight, onClose }: ContentProps) {
     onClose();
   };
 
+  const openChart = () => {
+    onClose();
+    router.push({ pathname: '/exercise/[id]', params: { id: exerciseId } });
+  };
+
   // Retargeting the panel: the content eases in with a critically damped spring (no overshoot).
   const enter = useSharedValue(0);
   useEffect(() => {
@@ -219,12 +226,15 @@ function SheetContent({ cell, sheetHeight, onClose }: ContentProps) {
   return (
     <Animated.View testID="entry-panel" style={[styles.content, enterStyle]}>
       <View style={styles.header}>
-        <Text variant="titleMedium" numberOfLines={1}>
-          {exercise?.name ?? ''}
-        </Text>
-        <Text variant="labelMedium" color="onSurfaceVariant" numberOfLines={1}>
-          {dateLabel(workout?.date ?? null)}
-        </Text>
+        <View style={styles.headerTexts}>
+          <Text variant="titleMedium" numberOfLines={1}>
+            {exercise?.name ?? ''}
+          </Text>
+          <Text variant="labelMedium" color="onSurfaceVariant" numberOfLines={1}>
+            {dateLabel(workout?.date ?? null)}
+          </Text>
+        </View>
+        <IconButton icon="show_chart" accessibilityLabel={s.openChart} onPress={openChart} />
       </View>
 
       <View style={styles.previousRow}>
@@ -375,7 +385,8 @@ export function CellSheet({ cell, onClose, onHeightChange }: Props) {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 12 },
-  header: { height: 44, paddingHorizontal: 24, justifyContent: 'center' },
+  header: { height: 48, paddingLeft: 24, paddingRight: 12, flexDirection: 'row', alignItems: 'center' },
+  headerTexts: { flex: 1, justifyContent: 'center' },
   previousRow: { height: 40, paddingHorizontal: 24, justifyContent: 'center' },
   previousButton: { alignSelf: 'flex-start', marginLeft: -8, maxWidth: '100%' },
   previousText: { paddingVertical: 2 },

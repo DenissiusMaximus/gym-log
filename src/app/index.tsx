@@ -136,13 +136,13 @@ export default function Home() {
     [closePanel],
   );
 
-  // The exercise chart arrives in a later stage; until then the name opens the editor.
+  // The name opens the exercise chart; the chart screen has the edit button.
   const onNamePress = useCallback(
     (exerciseId: string) => {
       closePanel();
-      setEditor({ open: true, exerciseId });
+      router.push({ pathname: '/exercise/[id]', params: { id: exerciseId } });
     },
-    [closePanel],
+    [closePanel, router],
   );
 
   const onAddExercise = useCallback(() => {

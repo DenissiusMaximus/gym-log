@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import type { ChartPeriod } from '../features/chart/chartMath';
 import { todayStr } from '../lib/date';
 import type { PersistStatus } from './types';
 
@@ -36,12 +37,15 @@ export type SelectedCell = { workoutId: string; exerciseId: string };
 type UiState = {
   today: string;
   selectedCell: SelectedCell | null;
+  /** Period picked on the chart screen; `null` until the first pick (then a default applies). */
+  chartPeriod: ChartPeriod | null;
   persistStatus: PersistStatus;
   updateReady: boolean;
   swStatus: SwStatus;
   snackbar: SnackbarMessage | null;
   refreshToday: () => void;
   setSelectedCell: (cell: SelectedCell | null) => void;
+  setChartPeriod: (period: ChartPeriod) => void;
   setPersistStatus: (status: PersistStatus) => void;
   setUpdateReady: (ready: boolean) => void;
   setSwStatus: (status: SwStatus) => void;
@@ -52,10 +56,11 @@ type UiState = {
 let snackbarSeq = 0;
 let snackbarTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** Non-persisted UI state. Later stages add dialogs and the chart period here. */
+/** Non-persisted UI state: lives until the app is closed. */
 export const useUi = create<UiState>()((set, get) => ({
   today: todayStr(),
   selectedCell: null,
+  chartPeriod: null,
   persistStatus: 'ok',
   updateReady: false,
   swStatus: 'registering',
@@ -65,6 +70,7 @@ export const useUi = create<UiState>()((set, get) => ({
     if (today !== get().today) set({ today });
   },
   setSelectedCell: (selectedCell) => set({ selectedCell }),
+  setChartPeriod: (chartPeriod) => set({ chartPeriod }),
   setPersistStatus: (persistStatus) => set({ persistStatus }),
   setUpdateReady: (updateReady) => set({ updateReady }),
   setSwStatus: (swStatus) => set({ swStatus }),
