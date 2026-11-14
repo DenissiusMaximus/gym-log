@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+    />
+    <title>%WEB_TITLE%</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Gym Log" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Light / dark `surface` of the theme; the app replaces these with a single tag matching the chosen theme. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FAF8FF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#10131C" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <script>
+      // Paint the page background before the JS bundle loads, honoring the saved theme (no flash).
+      (function () {
+        try {
+          var mode = localStorage.getItem('gymlog.theme');
+          var dark =
+            mode === 'dark' ||
+            (mode !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var surface = dark ? '#10131C' : '#FAF8FF';
+          document.documentElement.style.backgroundColor = surface;
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          for (var i = 0; i < metas.length; i++) {
+            metas[i].removeAttribute('media');
+            metas[i].setAttribute('content', surface);
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <style id="expo-reset">
+      html,
+      body,
+      #root {
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+      #root {
+        display: flex;
+        flex: 1;
+      }
+      * {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: manipulation;
+      }
+      /* iOS zooms into inputs with a font smaller than 16px. */
+      input,
+      textarea {
+        font-size: 16px;
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      /* Allow copying values and log lines in the developer panel. */
+      [data-selectable],
+      input,
+      textarea {
+        -webkit-user-select: text;
+        user-select: text;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript> You need to enable JavaScript to run this app. </noscript>
+    <div id="root"></div>
+    <script>
+      // A no-op touch listener makes iOS Safari apply :active styles.
+      document.addEventListener('touchstart', function () {}, { passive: true });
+    </script>
+  </body>
+</html>
