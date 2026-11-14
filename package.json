@@ -56,7 +56,8 @@
     "gen:icons": "node scripts/gen-icons.mjs",
     "gen:app-icons": "node scripts/gen-app-icons.mjs",
     "build:web": "node scripts/stamp.mjs && expo export -p web && workbox generateSW workbox-config.js",
-    "deploy:web": "npm run build:web && wrangler deploy"
+    "deploy:web": "npm run build:web && wrangler deploy",
+    "postinstall": "node scripts/stamp.mjs"
   },
   "private": true
 }
