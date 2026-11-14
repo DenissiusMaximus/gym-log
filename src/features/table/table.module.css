@@ -1,0 +1,233 @@
+/*
+ * Web table. Colors come from the `--md-<role>` variables set on <html> by the theme,
+ * so a theme change repaints without re-rendering any cell.
+ * Geometry mirrors metrics.ts: name column 124, date column 60, row 44, header 48.
+ */
+
+.scroller {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  /* Stops the rubber band at the edges: sticky parts jitter during the overshoot in Safari. */
+  overscroll-behavior: none;
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  font-family: 'Roboto_400Regular', sans-serif;
+  font-variant-numeric: tabular-nums;
+  touch-action: pan-x pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.content {
+  position: relative;
+}
+
+/* Sticky header: solid background so scrolled cells never show through. */
+.headerRow {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 48px;
+  box-sizing: border-box;
+  background: var(--md-surface-container-low);
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+
+.corner {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  width: 124px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  background: var(--md-surface-container-low);
+  border-right: 1px solid var(--md-outline-variant);
+  font: 11px/16px 'Roboto_500Medium', sans-serif;
+  letter-spacing: 0.5px;
+  color: var(--md-on-surface-variant);
+}
+
+/* Sticky name column; row separators are one repeating gradient, not borders on rows. */
+.nameCol {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 124px;
+  box-sizing: border-box;
+  background-color: var(--md-surface-container-low);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 43px,
+    var(--md-outline-variant) 43px,
+    var(--md-outline-variant) 44px
+  );
+  border-right: 1px solid var(--md-outline-variant);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  height: 43px;
+  margin-bottom: 1px;
+  padding: 0 8px 0 12px;
+  box-sizing: border-box;
+  font: 13px/16px 'Roboto_500Medium', sans-serif;
+  color: var(--md-on-surface);
+  cursor: pointer;
+  transition: background-color 0s;
+}
+
+.nameText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.add {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  font: 14px/20px 'Roboto_500Medium', sans-serif;
+  letter-spacing: 0.1px;
+  color: var(--md-primary);
+  cursor: pointer;
+  transition: background-color 0s;
+}
+
+.body {
+  position: absolute;
+  top: 48px;
+  left: 124px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 43px,
+    var(--md-outline-variant) 43px,
+    var(--md-outline-variant) 44px
+  );
+}
+
+/* Recycled slots: one date column, positioned with translateX. */
+.col {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  contain: layout style paint;
+}
+
+.today {
+  background: color-mix(in srgb, var(--md-primary) 8%, transparent);
+}
+
+.cell {
+  position: relative;
+  height: 43px;
+  margin-bottom: 1px;
+  border-radius: 8px;
+  text-align: center;
+  font: 15px/43px 'Roboto_500Medium', sans-serif;
+  color: var(--md-on-surface);
+  cursor: pointer;
+  transition: background-color 0s;
+}
+
+.undated .cell {
+  color: var(--md-on-surface-variant);
+}
+
+/* The 60 ms delay keeps the highlight from flashing when a touch turns into a scroll. */
+.cell:active,
+.name:active,
+.add:active,
+.hcell:active {
+  background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+  transition: background-color 0s 60ms;
+}
+
+.cell.selected {
+  background-color: var(--md-primary-container);
+  box-shadow: inset 0 0 0 2px var(--md-primary);
+}
+
+/* Extra sets: a row of dots under the number, out of flow so the number stays centered. */
+.dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--md-outline);
+}
+
+.plus {
+  font: 11px/6px 'Roboto_500Medium', sans-serif;
+  letter-spacing: 0.5px;
+  color: var(--md-outline);
+}
+
+.hcell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0s;
+}
+
+.date {
+  font: 14px/20px 'Roboto_500Medium', sans-serif;
+  letter-spacing: 0.1px;
+  color: var(--md-on-surface);
+}
+
+.datePill {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+}
+
+.sub {
+  font: 11px/16px 'Roboto_400Regular', sans-serif;
+  letter-spacing: 0.5px;
+  color: var(--md-on-surface-variant);
+}
+
+.noDate {
+  box-sizing: border-box;
+  width: 40px;
+  padding: 3px 0;
+  border: 1px dashed var(--md-outline);
+  border-radius: 8px;
+  text-align: center;
+  font: 11px/14px 'Roboto_400Regular', sans-serif;
+  color: var(--md-on-surface-variant);
+}

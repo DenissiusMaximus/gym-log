@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,6 +77,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export function DevPanel() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const data = useData();
   const ui = useUi();
   const errors = useSyncExternalStore(subscribeErrorLog, getErrorLog, getErrorLog);
@@ -242,6 +244,7 @@ export function DevPanel() {
             <Btn title={s.addEntry} onPress={addEntry} disabled={!data.hydrated} />
             <Btn title={s.generate} onPress={generate} disabled={!data.hydrated} />
             <Btn title={s.clearAll} tone="danger" onPress={clearAll} disabled={!data.hydrated} />
+            <Btn title={s.openTable} onPress={() => router.push('/dev-table')} />
             <Btn title={s.export} onPress={exportNow} disabled={busy === 'export'} />
             <Btn title={s.import} onPress={importNow} disabled={busy === 'import'} />
             <Btn title={simulating ? s.stopSimulatingFailure : s.simulateFailure} onPress={toggleFailure} />
