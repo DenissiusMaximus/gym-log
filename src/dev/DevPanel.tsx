@@ -245,6 +245,7 @@ export function DevPanel() {
             <Btn title={s.generate} onPress={generate} disabled={!data.hydrated} />
             <Btn title={s.clearAll} tone="danger" onPress={clearAll} disabled={!data.hydrated} />
             <Btn title={s.openTable} onPress={() => router.push('/dev-table')} />
+            <Btn title={s.openUiKit} onPress={() => router.push('/dev-ui')} />
             <Btn title={s.export} onPress={exportNow} disabled={busy === 'export'} />
             <Btn title={s.import} onPress={importNow} disabled={busy === 'import'} />
             <Btn title={simulating ? s.stopSimulatingFailure : s.simulateFailure} onPress={toggleFailure} />
@@ -275,24 +276,6 @@ export function DevPanel() {
           )}
         </Section>
       </ScrollView>
-
-      {ui.snackbar && (
-        <View style={[styles.snackbar, { backgroundColor: colors.inverseSurface, bottom: insets.bottom + 16 }]}>
-          <Text style={[styles.snackbarText, { color: colors.inverseOnSurface }]}>{ui.snackbar.text}</Text>
-          {ui.snackbar.actionLabel && (
-            <Pressable
-              accessibilityRole="button"
-              style={styles.snackbarAction}
-              onPress={() => {
-                ui.snackbar?.onAction?.();
-                ui.dismissSnackbar();
-              }}
-            >
-              <Text style={[styles.buttonText, { color: colors.inversePrimary }]}>{ui.snackbar.actionLabel}</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
     </View>
   );
 }
@@ -312,16 +295,4 @@ const styles = StyleSheet.create({
   banner: { borderRadius: 16, padding: 12, gap: 8 },
   bannerText: typography.bodyMedium,
   logLine: { ...typography.bodySmall, fontVariant: ['tabular-nums'] },
-  snackbar: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    minHeight: 48,
-    borderRadius: 4,
-    paddingLeft: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  snackbarText: { ...typography.bodyMedium, flex: 1, paddingVertical: 12 },
-  snackbarAction: { minHeight: 48, minWidth: 48, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
 });

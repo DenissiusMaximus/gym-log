@@ -30,6 +30,9 @@ const NAMES = [
   'upload',
   'ios_share',
   'expand_more',
+  'error',
+  'info',
+  'warning',
 ];
 
 // Icons renamed upstream: exported key -> file name in the installed package.

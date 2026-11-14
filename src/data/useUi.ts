@@ -17,6 +17,7 @@ export type SnackbarMessage = {
   text: string;
   actionLabel?: string;
   onAction?: () => void;
+  bottomOffset?: number;
 };
 
 export type SnackbarOptions = {
@@ -25,6 +26,8 @@ export type SnackbarOptions = {
   onAction?: () => void;
   /** Milliseconds; defaults to 5000. */
   duration?: number;
+  /** Extra distance above the bottom safe area (dp), for example above a FAB or the entry panel. */
+  bottomOffset?: number;
 };
 
 type UiState = {
@@ -59,10 +62,10 @@ export const useUi = create<UiState>()((set, get) => ({
   setUpdateReady: (updateReady) => set({ updateReady }),
   setSwStatus: (swStatus) => set({ swStatus }),
   // One snackbar at a time: a new one replaces the old one.
-  showSnackbar: ({ text, actionLabel, onAction, duration = 5000 }) => {
+  showSnackbar: ({ text, actionLabel, onAction, duration = 5000, bottomOffset }) => {
     if (snackbarTimer) clearTimeout(snackbarTimer);
     const id = ++snackbarSeq;
-    set({ snackbar: { id, text, actionLabel, onAction } });
+    set({ snackbar: { id, text, actionLabel, onAction, bottomOffset } });
     snackbarTimer = setTimeout(() => {
       if (get().snackbar?.id === id) set({ snackbar: null });
     }, duration);

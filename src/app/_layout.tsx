@@ -17,6 +17,8 @@ import { installErrorLog } from '@/dev/errorLog';
 import { requestPersistentStorage } from '@/pwa/persistStorage';
 import { registerSW } from '@/pwa/registerSW';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
+import { PortalHost, PortalProvider } from '@/ui/Portal';
+import { SnackbarHost } from '@/ui/Snackbar';
 
 SplashScreen.preventAutoHideAsync();
 installErrorLog();
@@ -63,7 +65,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <ThemeProvider mode={themeMode}>
-          <ThemedStack />
+          <PortalProvider>
+            <ThemedStack />
+            {/* Overlays draw above the screen stack; the snackbar above the overlays. */}
+            <PortalHost />
+            <SnackbarHost />
+          </PortalProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
