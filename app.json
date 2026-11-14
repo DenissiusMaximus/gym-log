@@ -49,6 +49,17 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "a9b4e6b0-f398-4534-90ff-2c818918fec5"
+      }
+    },
+    "owner": "denissiusmaximus"
   }
 }
