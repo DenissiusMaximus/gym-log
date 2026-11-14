@@ -154,6 +154,12 @@ export default function Home() {
   const closeMenu = useCallback(() => setMenuWorkoutId(null), []);
   const revealWorkout = useCallback((workoutId: string) => setScrollRequest({ workoutId, animated: true }), []);
 
+  // The group is passed along, so the manage screen opens with it already selected.
+  const openManageForGroup = () => {
+    closePanel();
+    router.push({ pathname: '/manage', params: { group: filter } });
+  };
+
   const openMore = () => {
     closePanel();
     setMoreOpen(true);
@@ -181,7 +187,7 @@ export default function Home() {
           />
         ) : rowIds.length === 0 ? (
           // A group without exercises: the table would only show dates.
-          <EmptyState title={s.emptyGroup} actionLabel={s.addExercise} onAction={onAddExercise} />
+          <EmptyState title={s.emptyGroup} actionLabel={s.addExercises} onAction={openManageForGroup} />
         ) : (
           <>
             <WorkoutTable
@@ -244,6 +250,7 @@ export default function Home() {
         visible={moreOpen}
         onClose={() => setMoreOpen(false)}
         actions={[
+          { key: 'manage', label: s.manage, icon: 'fitness_center', onPress: () => router.push('/manage') },
           { key: 'dev', label: s.developerPanel, icon: 'settings', onPress: () => router.push('/dev') },
         ]}
       />

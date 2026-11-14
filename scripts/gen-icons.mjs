@@ -33,6 +33,8 @@ const NAMES = [
   'error',
   'info',
   'warning',
+  'arrow_upward',
+  'arrow_downward',
 ];
 
 // Icons renamed upstream: exported key -> file name in the installed package.
