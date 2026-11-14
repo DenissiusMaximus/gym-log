@@ -1,7 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { selectColumnIds, selectRowIds } from '@/data/selectors';
@@ -105,6 +111,7 @@ export default function Home() {
     }
   }, [selectedWorkoutId, selectedExerciseId, sheetHeight]);
 
+  const reduced = useReducedMotion();
   const fade = useSharedValue(1);
   const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.get() }));
 
@@ -114,11 +121,12 @@ export default function Home() {
     (next: string) => {
       if (next === useData.getState().meta.activeFilter) return;
       closePanel();
-      fade.set(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: FILTER_FADE_MS })));
+      // Reduced motion: the table content swaps without the fade-in.
+      if (!reduced) fade.set(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: FILTER_FADE_MS })));
       useData.getState().setMeta({ activeFilter: next });
       setScrollRequest({ workoutId: null, animated: false });
     },
-    [closePanel, fade],
+    [closePanel, fade, reduced],
   );
 
   const onCellPress = useCallback((workoutId: string, exerciseId: string) => {
@@ -152,7 +160,7 @@ export default function Home() {
 
   const closeEditor = useCallback(() => setEditor((current) => ({ ...current, open: false })), []);
   const closeMenu = useCallback(() => setMenuWorkoutId(null), []);
-  const revealWorkout = useCallback((workoutId: string) => setScrollRequest({ workoutId, animated: true }), []);
+  const revealWorkout = useCallback((workoutId: string) => setScrollRequest({ workoutId, animated: !reduced }), [reduced]);
 
   // The group is passed along, so the manage screen opens with it already selected.
   const openManageForGroup = () => {

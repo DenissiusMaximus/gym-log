@@ -11,7 +11,7 @@ import { emptySnapshot } from '../data/ops';
 import { toSnapshot } from '../data/store';
 import { persist, useData } from '../data/useData';
 import { useUi } from '../data/useUi';
-import { resetAppCache, applyUpdate } from '../pwa/registerSW';
+import { resetAppCache } from '../pwa/registerSW';
 import { strings } from '../lib/strings';
 import { useTheme } from '../theme/ThemeProvider';
 import { typography } from '../theme/tokens';
@@ -197,20 +197,6 @@ export function DevPanel() {
           <Text style={[styles.title, text]}>{s.title}</Text>
         </View>
 
-        {ui.updateReady && (
-          <View style={[styles.banner, { backgroundColor: colors.primaryContainer }]}>
-            <Text style={[styles.bannerText, { color: colors.onPrimaryContainer }]}>{strings.update.available}</Text>
-            <Btn title={strings.update.action} tone="filled" onPress={() => run('update', applyUpdate)} />
-          </View>
-        )}
-
-        {ui.persistStatus === 'failed' && (
-          <View style={[styles.banner, { backgroundColor: colors.errorContainer }]}>
-            <Text style={[styles.bannerText, { color: colors.onErrorContainer }]}>{strings.persist.failedBanner}</Text>
-            <Btn title={strings.persist.saveCopy} onPress={exportNow} />
-          </View>
-        )}
-
         {pendingImport && (
           <View style={[styles.banner, { backgroundColor: colors.tertiaryContainer }]}>
             <Text style={[styles.bannerText, { color: colors.onTertiaryContainer }]}>
@@ -249,9 +235,7 @@ export function DevPanel() {
             <Btn title={s.addEntry} onPress={addEntry} disabled={!data.hydrated} />
             <Btn title={s.generate} onPress={generate} disabled={!data.hydrated} />
             <Btn title={s.clearAll} tone="danger" onPress={clearAll} disabled={!data.hydrated} />
-            <Btn title={s.openTable} onPress={() => router.push('/dev-table')} />
-            <Btn title={s.openUiKit} onPress={() => router.push('/dev-ui')} />
-            <Btn title={s.export} onPress={exportNow} disabled={busy === 'export'} />
+            <Btn title={s.export} onPress={exportNow} />
             <Btn title={s.import} onPress={importNow} disabled={busy === 'import'} />
             <Btn title={simulating ? s.stopSimulatingFailure : s.simulateFailure} onPress={toggleFailure} />
             <Btn

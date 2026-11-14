@@ -15,7 +15,7 @@ import { useData } from '@/data/useData';
 import { useUi } from '@/data/useUi';
 import { installErrorLog } from '@/dev/errorLog';
 import { AppNotices } from '@/features/system/AppNotices';
-import { WriteFailureBanner } from '@/features/system/WriteFailureBanner';
+import { WriteFailureLayout } from '@/features/system/WriteFailureBanner';
 import { requestPersistentStorage } from '@/pwa/persistStorage';
 import { registerSW } from '@/pwa/registerSW';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
@@ -68,9 +68,10 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider mode={themeMode}>
           <PortalProvider>
-            <ThemedStack />
-            <WriteFailureBanner />
-            {/* Overlays draw above the screen stack and the banner; the snackbar above the overlays. */}
+            <WriteFailureLayout>
+              <ThemedStack />
+            </WriteFailureLayout>
+            {/* Overlays sit outside the layout above, so they keep the real insets and draw over the banner; the snackbar above the overlays. */}
             <PortalHost />
             <SnackbarHost />
             <AppNotices />

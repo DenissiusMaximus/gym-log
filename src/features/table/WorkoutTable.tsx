@@ -17,6 +17,7 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -39,7 +40,6 @@ import {
   TRAIL_PAD,
   contentHeight,
 } from './metrics';
-import { trackSlotMount } from './slotStats';
 import type { RowInfo, WorkoutTableProps } from './types';
 import { bucketIndex, computeWindow, poolSize, replacedWholesale, revealOffset } from './window';
 
@@ -277,7 +277,6 @@ const ColumnSlot = memo(function ColumnSlot({
 }: ColumnSlotProps) {
   const byExercise = useData((s) => s.entries[workoutId]);
   const date = useData((s) => s.workouts[workoutId]?.date ?? null);
-  useEffect(trackSlotMount, []);
 
   const cells = [];
   for (const row of rows) {
@@ -444,6 +443,7 @@ export function WorkoutTable({
 
   const verticalRef = useRef<Animated.ScrollView>(null);
   const horizontalRef = useRef<Animated.ScrollView>(null);
+  const reduced = useReducedMotion();
   const scrollX = useSharedValue(0);
   const scrollY = useSharedValue(0);
   const pinnedToEnd = useRef(false);
@@ -564,11 +564,11 @@ export function WorkoutTable({
         const currentY = scrollY.get();
         const x = revealOffset(column * COL_W, COL_W, currentX, dataW);
         const y = revealOffset(row * ROW_H, ROW_H, currentY, viewportH.current - HEADER_H - bottomInset);
-        if (x !== currentX) horizontalRef.current?.scrollTo({ x, animated: true });
-        if (y !== currentY) verticalRef.current?.scrollTo({ y, animated: true });
+        if (x !== currentX) horizontalRef.current?.scrollTo({ x, animated: !reduced });
+        if (y !== currentY) verticalRef.current?.scrollTo({ y, animated: !reduced });
       },
     }),
-    [columnIds, rowIds, dataW, scrollX, scrollY],
+    [columnIds, rowIds, dataW, scrollX, scrollY, reduced],
   );
 
   return (

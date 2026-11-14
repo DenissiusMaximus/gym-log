@@ -1,56 +1,80 @@
-# Welcome to your Expo app 👋
+# Gym Log
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Особистий щоденник тренувань. Таблиця «вправа x дата» з вагою в кожній клітинці, групи вправ, графік прогресу, експорт і імпорт даних. Інтерфейс англійською, Material Design 3.
 
-## Get started
+Одна кодова база (Expo SDK 58, React Native, TypeScript, Expo Router) дає два застосунки:
 
-1. Install dependencies
+- **iPhone** - веб-застосунок (PWA), який додають на домашній екран із Safari. Працює офлайн.
+- **Android** - нативний APK зі збірки EAS.
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Запуск для розробки
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+- Веб: у терміналі натисніть `w` або запустіть `npm run web`.
+- Android: встановіть на телефон Expo Go, відскануйте QR-код із терміналу.
+- Панель розробника відкривається сімома швидкими дотиками до рядка з версією в Settings (маршрут `/dev`). У ній є генерація тестових даних, імітація збою запису, журнал помилок і скидання кешу.
 
-### Other setup steps
+## Тести й перевірки
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npm run typecheck   # tsc --noEmit
+npm run lint        # expo lint
+npm test            # jest
+npx expo-doctor     # перевірка залежностей і конфігурації
+```
 
-## Learn more
+Скрипти `typecheck`, `test` і `build:web` спершу запускають `node scripts/stamp.mjs`, який створює `src/buildInfo.generated.ts` (час збірки й версія). Файл не зберігається в git.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Збірка вебу і деплой
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npm run build:web
+```
 
-## Join the community
+Команда записує мітку збірки, експортує сайт у `dist/` і генерує service worker (`workbox`) для роботи офлайн.
 
-Join our community of developers creating universal apps.
+Деплой іде на Cloudflare Workers (налаштування в `wrangler.jsonc`). Підключіть репозиторій у Cloudflare з такими параметрами:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| Параметр | Значення |
+|---|---|
+| Ім'я Worker | `gym-log` |
+| Build command | `npm run build:web` |
+| Deploy command | `npx wrangler deploy` |
+
+Запасний шлях без автодеплою: `npx wrangler login`, потім `npm run deploy:web` (збирає й розгортає).
+
+## Збірка APK
+
+```bash
+npx eas-cli build -p android --profile preview
+```
+
+Профіль `preview` дає встановлюваний APK (`distribution: internal`). Профіль `production` збирає `app-bundle` на майбутнє. Сховище ключів підписування кероване EAS - не міняйте його, інакше нова версія не встановиться поверх старої. Пакет `com.gymlog.app` теж не міняйте: Android сприйме інший пакет як інший застосунок.
+
+Безкоштовний ліміт EAS Build обмежений, тому розробляйте в Expo Go, а APK збирайте лише для релізу.
+
+## Оновлення версії
+
+1. Змініть `version` в `app.json` і `package.json` (наприклад, `1.1.0`).
+2. Збільшіть `android.versionCode` в `app.json` на 1 (Android не встановить збірку з таким самим або меншим числом). `eas.json` має `appVersionSource: "local"`, тож версії беруться з `app.json`.
+3. Вебверсія: `git push` (або `npm run deploy:web`). У застосунку з'явиться повідомлення «New version available» з кнопкою оновлення. Поточну збірку видно в Settings.
+4. Android: нова збірка APK командою вище, встановіть її поверх старої.
+
+## Де лежать дані
+
+- **iPhone (веб)**: у сховищі браузера (IndexedDB) для адреси сайту. Дані прив'язані до цієї адреси. Дані, внесені у вкладці Safari, не потрапляють у встановлений застосунок: у них різні сховища. Система може очистити сховище, якщо застосунком довго не користуватись, або якщо видалити іконку.
+- **Android**: база SQLite всередині застосунку. Видалення застосунку видаляє й дані.
+
+## Резервна копія і переїзд
+
+Єдина надійна копія - файл експорту: Settings -> «Save a copy to a file» (на iPhone зберігається через меню «Поділитися», на Android - через вибір місця збереження, наприклад Диск або Файли). Робіть копію регулярно: застосунок нагадує про це, а в Settings видно дату останньої копії.
+
+Відновлення: Settings -> «Restore from a file», оберіть файл. Імпорт замінює поточні дані, але дозволяє відмінити заміну одразу після неї.
+
+Переїзд на інший телефон, іншу адресу чи з вебу на Android - лише через експорт та імпорт. Інших способів перенести дані немає.
+
+> **Адресу сайту міняти не можна.** Ім'я Worker `gym-log` і піддомен лишайте незмінними: сховище браузера прив'язане до адреси, і на новій адресі застосунок буде порожнім. Якщо адреса все ж мусить змінитись - спершу зробіть експорт на старій, потім імпорт на новій.

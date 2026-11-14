@@ -12,6 +12,8 @@ import {
   type MouseEvent,
 } from 'react';
 
+import { useReducedMotion } from 'react-native-reanimated';
+
 import { cellValue } from '../../data/selectors';
 import { useData } from '../../data/useData';
 import { formatLongDate } from '../../lib/date';
@@ -29,7 +31,6 @@ import {
   contentHeight,
   contentWidth,
 } from './metrics';
-import { trackSlotMount } from './slotStats';
 import css from './table.module.css';
 import type { RowInfo, WorkoutTableProps } from './types';
 import { bucketIndex, computeWindow, poolSize, replacedWholesale, revealOffset } from './window';
@@ -55,7 +56,6 @@ type ColumnSlotProps = {
 const ColumnSlot = memo(function ColumnSlot({ workoutId, rows, x, today, selectedExerciseId }: ColumnSlotProps) {
   const byExercise = useData((s) => s.entries[workoutId]);
   const date = useData((s) => s.workouts[workoutId]?.date ?? null);
-  useEffect(trackSlotMount, []);
 
   const cells = [];
   for (const row of rows) {
@@ -166,6 +166,7 @@ export function WorkoutTable({
     [rowIds, exercises],
   );
   const total = columnIds.length;
+  const reduced = useReducedMotion();
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef(0);
@@ -274,10 +275,10 @@ export function WorkoutTable({
         // The sticky header and name column cover the first HEADER_H / NAME_W of the viewport.
         const left = revealOffset(column * COL_W, COL_W, el.scrollLeft, el.clientWidth - NAME_W);
         const top = revealOffset(row * ROW_H, ROW_H, el.scrollTop, el.clientHeight - HEADER_H - bottomInset);
-        if (left !== el.scrollLeft || top !== el.scrollTop) el.scrollTo({ left, top, behavior: 'smooth' });
+        if (left !== el.scrollLeft || top !== el.scrollTop) el.scrollTo({ left, top, behavior: reduced ? 'auto' : 'smooth' });
       },
     }),
-    [columnIds, rowIds],
+    [columnIds, rowIds, reduced],
   );
 
   // One delegated handler for every cell, header and name.
