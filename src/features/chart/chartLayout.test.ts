@@ -1,4 +1,4 @@
-import { buildChartModel, CHART_HEIGHT } from './chartLayout';
+import { buildChartModel, CHART_HEIGHT, PAD_X, PAD_Y } from './chartLayout';
 import { filterPeriod } from './chartMath';
 import { make, pt } from './testSeries';
 
@@ -14,7 +14,8 @@ describe('buildChartModel', () => {
     expect(model.plot.right).toBe(390 - 36);
     const last = model.dots[1];
     expect(last.x).toBeLessThan(model.plot.right);
-    expect(model.dots[0].x).toBeCloseTo(model.plot.left, 5);
+    expect(model.dots[0].x).toBeCloseTo(model.plot.left + PAD_X, 5);
+    expect(last.x).toBeLessThanOrEqual(model.plot.right - PAD_X);
     for (const dot of model.dots) {
       expect(dot.y).toBeGreaterThanOrEqual(model.plot.top);
       expect(dot.y).toBeLessThanOrEqual(model.plot.bottom);
@@ -68,9 +69,25 @@ describe('buildChartModel', () => {
     expect(model.dots.map((d) => d.index)).toEqual([2, 3]);
   });
 
-  it('shrinks markers when points are crowded', () => {
-    const crowded = build(make(60, '2026-11-12', 1, [40, 41, 42]), 'All');
+  it('keeps the ringed marker of a new high inside the plane on every side', () => {
+    const ring = 7.5;
+    const model = build([pt('2026-10-21', 40), pt('2026-11-15', 50)], 'All');
+    for (const dot of model.dots) {
+      expect(dot.x - ring).toBeGreaterThanOrEqual(model.plot.left);
+      expect(dot.x + ring).toBeLessThanOrEqual(model.plot.right);
+      expect(dot.y - ring).toBeGreaterThanOrEqual(model.plot.top);
+      expect(dot.y + ring).toBeLessThanOrEqual(model.plot.bottom);
+    }
+    expect(PAD_Y).toBeGreaterThanOrEqual(ring);
+  });
+
+  it('shrinks ordinary markers above 25 visible points', () => {
+    const crowded = build(make(26, '2026-11-12', 1, [40, 41, 42]), 'All');
+    expect(crowded.dense).toBe(true);
     expect(crowded.markerRadius).toBe(2);
+    const edge = build(make(25, '2026-11-12', 1, [40, 41, 42]), 'All');
+    expect(edge.dense).toBe(false);
+    expect(edge.markerRadius).toBe(3.5);
     expect(build(make(5, '2026-11-12', 7, [40, 41]), 'All').markerRadius).toBe(3.5);
   });
 

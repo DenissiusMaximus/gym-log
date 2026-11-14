@@ -251,7 +251,7 @@ export default function Home() {
         onClose={() => setMoreOpen(false)}
         actions={[
           { key: 'manage', label: s.manage, icon: 'fitness_center', onPress: () => router.push('/manage') },
-          { key: 'dev', label: s.developerPanel, icon: 'settings', onPress: () => router.push('/dev') },
+          { key: 'settings', label: s.settings, icon: 'settings', onPress: () => router.push('/settings') },
         ]}
       />
     </View>

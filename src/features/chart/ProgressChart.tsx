@@ -122,7 +122,7 @@ const StaticLayer = memo(function StaticLayer({ model }: LayerProps) {
             r={model.markerRadius}
             fill={colors.primary}
             stroke={colors.surface}
-            strokeWidth={model.markerRadius > 2 ? 1.5 : 1}
+            strokeWidth={model.dense ? 0 : 1.5}
           />
         ),
       )}

@@ -85,8 +85,16 @@ function StatCard({ label, value, sub, icon, iconColor = 'onSurfaceVariant', tes
         {label}
       </Text>
       <View style={styles.cardValue}>
-        {icon ? <Icon name={icon} size={20} color={colors[iconColor]} /> : null}
-        <Text variant="titleMedium" numeric style={styles.cardValueText}>
+        {icon ? <Icon name={icon} size={18} color={colors[iconColor]} /> : null}
+        {/* One line on a 360 dp screen: smaller type, shrunk further where the platform supports it. */}
+        <Text
+          variant="titleSmall"
+          numeric
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+          style={styles.cardValueText}
+        >
           {value}
         </Text>
       </View>
@@ -172,7 +180,7 @@ const styles = StyleSheet.create({
   prefix: { marginRight: 2 },
   unit: { marginLeft: 2 },
   cards: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 16 },
-  card: { flex: 1, borderRadius: shape.large, padding: 12, gap: 4 },
-  cardValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  card: { flex: 1, borderRadius: shape.large, paddingHorizontal: 8, paddingVertical: 12, gap: 4 },
+  cardValue: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   cardValueText: { flexShrink: 1 },
 });

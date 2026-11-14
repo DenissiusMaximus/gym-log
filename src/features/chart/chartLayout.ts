@@ -22,6 +22,14 @@ const MARGIN = 16;
 const TOP = 24;
 /** Room under the plane for the X axis labels. */
 const BOTTOM = 28;
+/**
+ * Inner padding of the plane: the markers of the first/last/highest points (ring radius 7.5)
+ * must fit inside it instead of being cut by the plane edge. Lines still clip at the plane edge.
+ */
+export const PAD_X = 8;
+export const PAD_Y = 8;
+/** More visible points than this and the ordinary markers shrink to avoid a chain of dots. */
+export const DENSE_POINTS = 25;
 
 export type Plot = { left: number; right: number; top: number; bottom: number };
 
@@ -45,8 +53,10 @@ export type ChartModel = {
   /** Lines between points, the incoming segment from before the period included. */
   paths: ChartPath[];
   labels: (PlacedLabel & { y: number })[];
-  /** 3.5 normally, 2 when points sit closer than 8 px on average. */
+  /** 3.5 normally, 2 when more than 25 points are visible (see `dense`). */
   markerRadius: number;
+  /** Dense mode: ordinary markers are small and have no outline; new highs stay large. */
+  dense: boolean;
 };
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -87,12 +97,12 @@ export function buildChartModel(
 
   // One point: the marker sits in the middle and there is no time axis to read.
   const domain = yDomain(visible.map((p) => p.avg));
-  const y = linearScale(domain.lo, domain.hi, plot.bottom, plot.top);
+  const y = linearScale(domain.lo, domain.hi, plot.bottom - PAD_Y, plot.top + PAD_Y);
   const startDay = dayNumber(view.start);
   const endDay = dayNumber(view.end);
   const x = single
     ? () => (plot.left + plot.right) / 2
-    : linearScale(startDay, endDay, plot.left, plot.right);
+    : linearScale(startDay, endDay, plot.left + PAD_X, plot.right - PAD_X);
 
   const highs = newHighFlags(series);
   const gaps = gapFlags(series);
@@ -109,8 +119,8 @@ export function buildChartModel(
   const chainGaps = gaps.slice(chainFrom, view.to);
   const paths = buildPaths(chain, chainGaps);
 
-  const gap = dots.length > 1 ? (dots[dots.length - 1].x - dots[0].x) / (dots.length - 1) : Infinity;
-  const markerRadius = gap < 8 ? 2 : 3.5;
+  const dense = visible.length > DENSE_POINTS;
+  const markerRadius = dense ? 2 : 3.5;
 
   const labels = placeLabels({
     xs: dots.map((d) => d.x),
@@ -131,5 +141,6 @@ export function buildChartModel(
     paths,
     labels,
     markerRadius,
+    dense,
   };
 }

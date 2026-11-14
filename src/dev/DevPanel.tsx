@@ -4,8 +4,8 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BUILD_TIME } from '../buildInfo.generated';
-import { BackupError, backupFileName, describeSummary, parseAndValidate, serialize, type ParsedBackup } from '../data/backup';
-import { exportBackupFile, pickBackupFile } from '../data/backupIO';
+import { BackupError, describeSummary, type ParsedBackup } from '../data/backup';
+import { applyBackup, chooseBackupToRestore, saveBackup } from '../data/backupActions';
 import { generateDemo } from '../data/demo';
 import { emptySnapshot } from '../data/ops';
 import { toSnapshot } from '../data/store';
@@ -118,26 +118,21 @@ export function DevPanel() {
   };
 
   const exportNow = () => {
-    // The backup text and share call run synchronously inside the tap handler (Safari needs that).
-    const promise = exportBackupFile(serialize(toSnapshot(useData.getState())), backupFileName(ui.today));
-    run('export', async () => {
-      if (await promise) useData.getState().setMeta({ lastBackupAt: new Date().toISOString() });
-    });
+    // Called straight from the tap: saveBackup builds the file synchronously (Safari needs that).
+    void saveBackup();
   };
 
   const importNow = () => {
-    const promise = pickBackupFile();
     run('import', async () => {
-      const text = await promise;
-      if (text !== null) setPendingImport(parseAndValidate(text));
+      const parsed = await chooseBackupToRestore();
+      if (parsed) setPendingImport(parsed);
     });
   };
 
   const confirmImport = () => {
     if (!pendingImport) return;
-    const undo = useData.getState().importSnapshot(pendingImport.snapshot);
+    applyBackup(pendingImport);
     setPendingImport(null);
-    ui.showSnackbar({ text: strings.data.replaced, actionLabel: strings.common.undo, onAction: undo, duration: 10_000 });
   };
 
   const addEntry = () => {
@@ -190,7 +185,17 @@ export function DevPanel() {
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 96 }]}
       >
-        <Text style={[styles.title, text]}>{s.title}</Text>
+        <View style={styles.titleRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={strings.ui.back}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            style={[styles.backButton, { backgroundColor: colors.secondaryContainer }]}
+          >
+            <Text style={[styles.buttonText, { color: colors.onSecondaryContainer }]}>{strings.ui.back}</Text>
+          </Pressable>
+          <Text style={[styles.title, text]}>{s.title}</Text>
+        </View>
 
         {ui.updateReady && (
           <View style={[styles.banner, { backgroundColor: colors.primaryContainer }]}>
@@ -284,6 +289,8 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { paddingHorizontal: 16, gap: 12 },
   title: typography.headlineSmall,
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backButton: { minHeight: 48, minWidth: 48, paddingHorizontal: 16, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   section: { borderRadius: 16, padding: 12, gap: 6 },
   sectionTitle: typography.titleMedium,
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, minHeight: 28, alignItems: 'center' },

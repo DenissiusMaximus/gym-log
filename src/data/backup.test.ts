@@ -40,7 +40,7 @@ describe('backup', () => {
     expect(snapshot.entries).toEqual(original.entries);
     expect(summary).toEqual({ exercises: 2, workouts: 3, firstDate: '2026-10-21', lastDate: '2027-11-12' });
     expect(describeSummary(summary)).toBe(
-      'The file contains 2 exercises, 3 workouts, 21.10.2026 - 12.11.2027. Current data will be replaced.',
+      'In the file: 2 exercises, 3 workouts, 21.10.2026 - 12.11.2027. Your current data will be replaced.',
     );
   });
 

@@ -29,21 +29,45 @@ export const strings = {
   },
   persist: {
     failedBanner:
-      'Cannot save data. Restart the app; if that does not help, restart the phone. Save a backup copy.',
-    saveCopy: 'Save copy',
+      'Cannot save data. Restart the app; if that does not help, restart the phone. Make a backup.',
+    saveCopy: 'Save a copy',
   },
   backup: {
     invalidFile: 'This is not a Gym Log backup file',
     newerVersion: 'This file was created by a newer version of the app',
     invalidField: (path: string) => `The backup file is damaged: invalid ${path}`,
     importSummary: (exercises: number, workouts: number, range: string | null) =>
-      `The file contains ${countLabel(exercises, 'exercise', 'exercises')}, ` +
+      `In the file: ${countLabel(exercises, 'exercise', 'exercises')}, ` +
       `${countLabel(workouts, 'workout', 'workouts')}` +
-      `${range ? `, ${range}` : ''}. Current data will be replaced.`,
-    replace: 'Replace data',
+      `${range ? `, ${range}` : ''}. Your current data will be replaced.`,
+    importTitle: 'Restore from backup',
+    replace: 'Replace',
     exportFailed: 'Could not save the backup file',
     importFailed: 'Could not read the file',
     saved: 'Backup saved',
+    nudge: 'No backup for a long time',
+    nudgeAction: 'Save',
+    lastBackup: (when: string) => `Last backup: ${when}`,
+    never: 'never',
+  },
+  settings: {
+    title: 'Settings',
+    theme: 'Theme',
+    themeLabel: 'Theme mode',
+    system: 'System',
+    light: 'Light',
+    dark: 'Dark',
+    backup: 'Backup',
+    saveToFile: 'Save a copy to a file',
+    restoreFromFile: 'Restore from a file',
+    storageProtected: 'Storage: protected',
+    storageStandard: 'Storage: standard',
+    storageProtectedHint: 'Protected storage is not cleared automatically by the browser',
+    storageStandardHint:
+      'The browser may clear standard storage when the device runs low on space. Keep a backup.',
+    about: 'About',
+    version: (version: string) => `Version ${version}`,
+    build: (time: string) => `Build ${time}`,
   },
   table: {
     corner: 'Exercise',
@@ -56,7 +80,7 @@ export const strings = {
   home: {
     filterAll: 'All',
     more: 'More',
-    developerPanel: 'Developer panel',
+    settings: 'Settings',
     manage: 'Exercises & groups',
     newWorkout: 'New workout',
     today: (date: string) => `Today, ${date}`,
