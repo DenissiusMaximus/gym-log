@@ -30,13 +30,18 @@ export type SnackbarOptions = {
   bottomOffset?: number;
 };
 
+/** The table cell the entry panel is editing. */
+export type SelectedCell = { workoutId: string; exerciseId: string };
+
 type UiState = {
   today: string;
+  selectedCell: SelectedCell | null;
   persistStatus: PersistStatus;
   updateReady: boolean;
   swStatus: SwStatus;
   snackbar: SnackbarMessage | null;
   refreshToday: () => void;
+  setSelectedCell: (cell: SelectedCell | null) => void;
   setPersistStatus: (status: PersistStatus) => void;
   setUpdateReady: (ready: boolean) => void;
   setSwStatus: (status: SwStatus) => void;
@@ -47,9 +52,10 @@ type UiState = {
 let snackbarSeq = 0;
 let snackbarTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** Non-persisted UI state. Later stages add selection, dialogs and the chart period here. */
+/** Non-persisted UI state. Later stages add dialogs and the chart period here. */
 export const useUi = create<UiState>()((set, get) => ({
   today: todayStr(),
+  selectedCell: null,
   persistStatus: 'ok',
   updateReady: false,
   swStatus: 'registering',
@@ -58,6 +64,7 @@ export const useUi = create<UiState>()((set, get) => ({
     const today = todayStr();
     if (today !== get().today) set({ today });
   },
+  setSelectedCell: (selectedCell) => set({ selectedCell }),
   setPersistStatus: (persistStatus) => set({ persistStatus }),
   setUpdateReady: (updateReady) => set({ updateReady }),
   setSwStatus: (swStatus) => set({ swStatus }),

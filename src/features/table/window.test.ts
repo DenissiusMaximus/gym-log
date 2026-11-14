@@ -1,4 +1,4 @@
-import { bucketIndex, computeWindow, poolSize, revealOffset } from './window';
+import { bucketIndex, computeWindow, poolSize, replacedWholesale, revealOffset } from './window';
 
 const base = { viewportW: 266, colW: 60, total: 300, overscan: 6, bucket: 2 };
 
@@ -101,5 +101,20 @@ describe('revealOffset', () => {
   });
   it('ignores a zero-size view', () => {
     expect(revealOffset(400, 60, 100, 0)).toBe(100);
+  });
+});
+
+describe('replacedWholesale', () => {
+  it('is true when no column survives', () => {
+    expect(replacedWholesale(['a', 'b'], ['c', 'd'])).toBe(true);
+  });
+  it('is false when at least one column survives', () => {
+    expect(replacedWholesale(['a', 'b'], ['b', 'c'])).toBe(false);
+  });
+  it('is false for the same array and for empty lists', () => {
+    const list = ['a'];
+    expect(replacedWholesale(list, list)).toBe(false);
+    expect(replacedWholesale([], ['a'])).toBe(false);
+    expect(replacedWholesale(['a'], [])).toBe(false);
   });
 });

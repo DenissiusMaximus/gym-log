@@ -41,7 +41,7 @@ import {
 } from './metrics';
 import { trackSlotMount } from './slotStats';
 import type { RowInfo, WorkoutTableProps } from './types';
-import { bucketIndex, computeWindow, poolSize, revealOffset } from './window';
+import { bucketIndex, computeWindow, poolSize, replacedWholesale, revealOffset } from './window';
 
 const FONT_SCALE_CAP = 1.3;
 
@@ -489,6 +489,22 @@ export function WorkoutTable({
     scrollX.set(x);
     setBucket(bucketIndex(x, COL_W, BUCKET));
   };
+
+  // The data was replaced wholesale (import, demo data): jump to the newest column like on the first
+  // open. The scroll is repeated on the next frame because the native content size may still be the old one.
+  const previousColumns = useRef(columnIds);
+  useEffect(() => {
+    const previous = previousColumns.current;
+    previousColumns.current = columnIds;
+    if (!replacedWholesale(previous, columnIds)) return;
+    const x = Math.max(0, stripW - dataW);
+    const jump = () => horizontalRef.current?.scrollTo({ x, animated: false });
+    jump();
+    scrollX.set(x);
+    setBucket(bucketIndex(x, COL_W, BUCKET));
+    const frame = requestAnimationFrame(jump);
+    return () => cancelAnimationFrame(frame);
+  }, [columnIds, stripW, dataW, scrollX]);
 
   const win = computeWindow({
     scrollX: bucket * COL_W * BUCKET,

@@ -32,7 +32,7 @@ import {
 import { trackSlotMount } from './slotStats';
 import css from './table.module.css';
 import type { RowInfo, WorkoutTableProps } from './types';
-import { bucketIndex, computeWindow, poolSize, revealOffset } from './window';
+import { bucketIndex, computeWindow, poolSize, replacedWholesale, revealOffset } from './window';
 
 const CELL = css.cell;
 const CELL_SELECTED = `${css.cell} ${css.selected}`;
@@ -178,10 +178,14 @@ export function WorkoutTable({
   );
   const bucketRef = useRef(bucket);
 
-  // Newest dates are on the right: start there, and again when the table goes from empty to filled.
+  // Newest dates are on the right: start there, and again when the table goes from empty to filled
+  // or when the data is replaced wholesale (import, demo data: no column survives).
+  const previousColumns = useRef(columnIds);
   useLayoutEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
+    if (replacedWholesale(previousColumns.current, columnIds)) pinnedToEnd.current = false;
+    previousColumns.current = columnIds;
     if (total === 0) {
       pinnedToEnd.current = false;
       return;
@@ -193,7 +197,7 @@ export function WorkoutTable({
     bucketRef.current = next;
     setBucket(next);
     setViewportW(el.clientWidth);
-  }, [total]);
+  }, [columnIds, total]);
 
   useEffect(() => {
     const el = scrollerRef.current;

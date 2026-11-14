@@ -55,3 +55,13 @@ export function revealOffset(start: number, size: number, offset: number, viewSi
   if (start + size > offset + viewSize) return Math.max(0, start + size - viewSize);
   return offset;
 }
+
+/**
+ * True when both lists are non-empty and share no workout: the data was replaced as a whole
+ * (import, demo data), so the table should jump to the newest column like on the first open.
+ */
+export function replacedWholesale(previous: readonly string[], next: readonly string[]): boolean {
+  if (previous === next || previous.length === 0 || next.length === 0) return false;
+  const known = new Set(previous);
+  return !next.some((id) => known.has(id));
+}
