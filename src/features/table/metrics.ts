@@ -18,7 +18,7 @@ export function contentWidth(columnCount: number): number {
   return NAME_W + columnCount * COL_W + TRAIL_PAD;
 }
 
-/** Height of the sticky header plus all exercise rows, the "+ Exercise" row and the bottom pad. */
+/** Height of the sticky header plus all exercise rows, the "Add exercise" row and the bottom pad. */
 export function contentHeight(rowCount: number, bottomPad: number): number {
   return HEADER_H + (rowCount + 1) * ROW_H + bottomPad;
 }

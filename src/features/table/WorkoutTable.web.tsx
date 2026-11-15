@@ -20,6 +20,7 @@ import { useData } from '../../data/useData';
 import { formatLongDate } from '../../lib/date';
 import { formatWeight } from '../../lib/format';
 import { strings } from '../../lib/strings';
+import { ICON_VIEW_BOX, icons } from '../../ui/icons.generated';
 import { cellLabel, dotsFor, headerLabel } from './labels';
 import {
   BUCKET,
@@ -133,15 +134,25 @@ const HeaderSlot = memo(function HeaderSlot({ workoutId, x, today }: HeaderSlotP
 
 const NameColumn = memo(function NameColumn({ rows }: { rows: RowInfo[] }) {
   return (
-    <div className={css.nameCol} style={{ height: (rows.length + 1) * ROW_H }}>
+    <div className={css.nameCol} style={{ height: rows.length * ROW_H }}>
       {rows.map((row) => (
         <div key={row.id} className={css.name} role="button" data-n={row.id}>
           <span className={css.nameText}>{row.name}</span>
         </div>
       ))}
-      <div className={css.add} role="button" data-add="">
+    </div>
+  );
+});
+
+const AddRow = memo(function AddRow() {
+  return (
+    <div className={css.addRow} role="button" data-add="">
+      <span className={css.addLabel}>
+        <svg className={css.addIcon} viewBox={ICON_VIEW_BOX} aria-hidden="true">
+          <path d={icons.add} />
+        </svg>
         {strings.table.addExercise}
-      </div>
+      </span>
     </div>
   );
 });
@@ -314,7 +325,8 @@ export function WorkoutTable({
           {headerSlots}
         </div>
         <NameColumn rows={rows} />
-        <div className={css.body} style={{ width: total * COL_W + TRAIL_PAD, height: rows.length * ROW_H }}>
+        <AddRow />
+        <div className={css.body} style={{ height: rows.length * ROW_H }}>
           {bodySlots}
         </div>
       </div>

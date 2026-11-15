@@ -2,6 +2,8 @@
 // [name column | horizontal scroll view]. The date header lives INSIDE the horizontal scroll view, so it
 // moves horizontally with the cells natively. Vertically the header and the corner are pinned by
 // `translateY = scrollY`, computed on the UI thread. Date columns are a pool of recycled slots.
+// The header strip and the row lines run to the right edge (`contentW`), and the table ends with a
+// full-width "Add exercise" row that sits outside the horizontal scroll, so it never moves sideways.
 import {
   memo,
   useCallback,
@@ -28,6 +30,7 @@ import { useData } from '../../data/useData';
 import { formatLongDate } from '../../lib/date';
 import { formatWeight } from '../../lib/format';
 import { strings } from '../../lib/strings';
+import { Icon } from '../../ui/Icon';
 import { useTheme, type Palette } from '../../theme/ThemeProvider';
 import { fontFamily, stateLayer } from '../../theme/tokens';
 import { cellLabel, dotsFor, headerLabel } from './labels';
@@ -79,6 +82,7 @@ function makeThemedStyles(c: Palette) {
         letterSpacing: 0.5,
         color: c.onSurfaceVariant,
       },
+      addRow: { backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.outlineVariant },
       nameRow: { borderBottomWidth: 1, borderBottomColor: c.outlineVariant },
       nameText: { fontFamily: fontFamily.medium, fontSize: 13, lineHeight: 16, color: c.onSurface },
       addText: {
@@ -161,6 +165,7 @@ function makeThemedStyles(c: Palette) {
       },
     }),
     ripple: { color: withAlpha(c.onSurface, stateLayer.cellPressed) },
+    addIconColor: c.primary,
   };
 }
 
@@ -173,7 +178,8 @@ const layout = StyleSheet.create({
   corner: { position: 'absolute', top: 0, left: 0, width: NAME_W, height: HEADER_H, zIndex: 2 },
   nameRowsOffset: { paddingTop: HEADER_H },
   nameRow: { height: ROW_H, paddingLeft: 12, paddingRight: 8, justifyContent: 'center' },
-  addRow: { height: ROW_H, paddingHorizontal: 12, justifyContent: 'center' },
+  addRow: { position: 'absolute', left: 0, right: 0, height: ROW_H },
+  addRowInner: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
   headerStrip: { position: 'absolute', top: 0, left: 0, height: HEADER_H, zIndex: 2 },
   headerCell: {
     position: 'absolute',
@@ -350,26 +356,40 @@ type NameColumnProps = {
   rows: RowInfo[];
   ts: ThemedStyles;
   onNamePress: (exerciseId: string) => void;
-  onAddExercise: () => void;
 };
 
-const NameColumn = memo(function NameColumn({ rows, ts, onNamePress, onAddExercise }: NameColumnProps) {
+const NameColumn = memo(function NameColumn({ rows, ts, onNamePress }: NameColumnProps) {
   return (
-    <View style={[layout.nameRowsOffset, ts.nameColumn, { height: HEADER_H + (rows.length + 1) * ROW_H }]}>
+    <View style={[layout.nameRowsOffset, ts.nameColumn, { height: HEADER_H + rows.length * ROW_H }]}>
       {rows.map((row) => (
         <NameRow key={row.id} row={row} ts={ts} onNamePress={onNamePress} />
       ))}
+    </View>
+  );
+});
+
+type AddRowProps = {
+  top: number;
+  style: object;
+  ts: ThemedStyles;
+  onPress: () => void;
+};
+
+const AddRow = memo(function AddRow({ top, style, ts, onPress }: AddRowProps) {
+  return (
+    <Animated.View style={[layout.addRow, { top }, style]}>
       <Pressable
         accessibilityRole="button"
         android_ripple={ts.ripple}
-        onPress={onAddExercise}
-        style={layout.addRow}
+        onPress={onPress}
+        style={[layout.addRowInner, ts.addRow]}
       >
+        <Icon name="add" size={20} color={ts.addIconColor} />
         <Text style={ts.addText} maxFontSizeMultiplier={FONT_SCALE_CAP}>
           {strings.table.addExercise}
         </Text>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 });
 
@@ -441,6 +461,7 @@ export function WorkoutTable({
   const [viewportW, setViewportW] = useState(screenW);
   const viewportH = useRef(0);
   const dataW = Math.max(0, viewportW - NAME_W);
+  const contentW = Math.max(stripW, dataW);
 
   const verticalRef = useRef<Animated.ScrollView>(null);
   const horizontalRef = useRef<Animated.ScrollView>(null);
@@ -470,6 +491,14 @@ export function WorkoutTable({
 
   // Pins the header strip and the corner to the top of the viewport.
   const stickyStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scrollY.get() }] }));
+
+  // The "Add exercise" row follows the last exercise but stops under the pinned header once the
+  // content scrolls past it, so it never slides beneath the header.
+  const rowsH = rows.length * ROW_H;
+  const addRowStyle = useAnimatedStyle(
+    () => ({ transform: [{ translateY: Math.max(0, scrollY.get() - rowsH) }] }),
+    [rowsH],
+  );
 
   const onLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -586,7 +615,7 @@ export function WorkoutTable({
       >
         <View style={[layout.row, { height: contentHeight(rows.length, bottomPad) }]}>
           <View style={layout.nameColumnOuter}>
-            <NameColumn rows={rows} ts={ts} onNamePress={namePress} onAddExercise={addExercise} />
+            <NameColumn rows={rows} ts={ts} onNamePress={namePress} />
             <Animated.View style={[layout.corner, ts.corner, stickyStyle]}>
               <Text style={ts.cornerText} maxFontSizeMultiplier={FONT_SCALE_CAP}>
                 {strings.table.corner}
@@ -605,14 +634,15 @@ export function WorkoutTable({
             contentOffset={{ x: initialX, y: 0 }}
             onContentSizeChange={onContentSizeChange}
           >
-            <View style={{ width: stripW, height: contentHeight(rows.length, bottomPad) }}>
+            <View style={{ width: contentW, height: contentHeight(rows.length, bottomPad) }}>
               <Dividers count={rows.length} ts={ts} />
               {bodySlots}
-              <Animated.View style={[layout.headerStrip, ts.headerStrip, { width: stripW }, stickyStyle]}>
+              <Animated.View style={[layout.headerStrip, ts.headerStrip, { width: contentW }, stickyStyle]}>
                 {headerSlots}
               </Animated.View>
             </View>
           </Animated.ScrollView>
+          <AddRow top={HEADER_H + rowsH} style={addRowStyle} ts={ts} onPress={addExercise} />
         </View>
       </Animated.ScrollView>
     </View>

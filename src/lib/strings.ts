@@ -72,7 +72,7 @@ export const strings = {
   },
   table: {
     corner: 'Exercise',
-    addExercise: '+ Exercise',
+    addExercise: 'Add exercise',
     noDateTop: 'no',
     noDateBottom: 'date',
     noDate: 'no date',
