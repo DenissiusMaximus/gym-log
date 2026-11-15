@@ -23,6 +23,7 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { cellValue } from '../../data/selectors';
+import { useColumnDate } from '../../data/useColumnDate';
 import { useData } from '../../data/useData';
 import { formatLongDate } from '../../lib/date';
 import { formatWeight } from '../../lib/format';
@@ -276,7 +277,7 @@ const ColumnSlot = memo(function ColumnSlot({
   onCellPress,
 }: ColumnSlotProps) {
   const byExercise = useData((s) => s.entries[workoutId]);
-  const date = useData((s) => s.workouts[workoutId]?.date ?? null);
+  const date = useColumnDate(workoutId);
 
   const cells = [];
   for (const row of rows) {
@@ -313,7 +314,7 @@ type HeaderSlotProps = {
 };
 
 const HeaderSlot = memo(function HeaderSlot({ workoutId, x, today, ts, onHeaderPress }: HeaderSlotProps) {
-  const date = useData((s) => s.workouts[workoutId]?.date ?? null);
+  const date = useColumnDate(workoutId);
   const label = headerLabel(date, today);
   const handlePress = useCallback(() => onHeaderPress(workoutId), [onHeaderPress, workoutId]);
   return (

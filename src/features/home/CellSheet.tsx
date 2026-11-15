@@ -12,8 +12,10 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { selectPrevious } from '../../data/selectors';
+import { useColumnDate } from '../../data/useColumnDate';
 import { useData } from '../../data/useData';
-import type { SelectedCell } from '../../data/useUi';
+import { useUi, type SelectedCell } from '../../data/useUi';
+import { columnDate } from '../../data/virtualColumns';
 import { formatColumnDate, weekdayIndex, WEEKDAYS_SHORT } from '../../lib/date';
 import { formatWeight } from '../../lib/format';
 import * as haptics from '../../lib/haptics';
@@ -131,10 +133,14 @@ function SheetContent({ cell, sheetHeight, onClose }: ContentProps) {
   const valueColors = useValueStyles();
 
   const exercise = useData((st) => st.exercises[exerciseId]);
-  const workout = useData((st) => st.workouts[workoutId]);
+  const date = useColumnDate(workoutId);
   const entry = useData((st) => st.entries[workoutId]?.[exerciseId]);
   // The previous workout cannot change while this cell is open, so it is looked up once.
-  const [previous] = useState(() => selectPrevious(useData.getState(), exerciseId, workoutId));
+  const [previous] = useState(() => {
+    const data = useData.getState();
+    const ui = useUi.getState();
+    return selectPrevious(data, exerciseId, workoutId, columnDate(data.workouts, ui.draftIds, ui.today, workoutId));
+  });
   const previousBase = previousValue(previous?.weights);
 
   const [typed, setTyped] = useState<{ active: number; buf: string | null }>({ active: 0, buf: null });
@@ -228,7 +234,7 @@ function SheetContent({ cell, sheetHeight, onClose }: ContentProps) {
             {exercise?.name ?? ''}
           </Text>
           <Text variant="labelMedium" color="onSurfaceVariant" numberOfLines={1}>
-            {dateLabel(workout?.date ?? null)}
+            {dateLabel(date)}
           </Text>
         </View>
         <IconButton icon="show_chart" accessibilityLabel={s.openChart} onPress={openChart} />
@@ -349,7 +355,8 @@ function SheetContent({ cell, sheetHeight, onClose }: ContentProps) {
  * Weight entry panel (plan 8.5): a non-modal bottom sheet with the previous value, a stepper, set
  * chips and its own numeric keypad. The system keyboard is never opened. Every change that makes a
  * valid number is saved at once; nothing is created until a digit, "+", "-" or "Same as last time"
- * is pressed.
+ * is pressed. On a virtual column (today or no date) the workout is created together with the
+ * first valid weight; the column id stays the same, so the panel is not remounted.
  */
 export function CellSheet({ cell, onClose, onHeightChange }: Props) {
   // Keeps the last cell while the panel slides out, when `cell` is already null.

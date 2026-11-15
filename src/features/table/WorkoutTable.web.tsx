@@ -15,6 +15,7 @@ import {
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { cellValue } from '../../data/selectors';
+import { useColumnDate } from '../../data/useColumnDate';
 import { useData } from '../../data/useData';
 import { formatLongDate } from '../../lib/date';
 import { formatWeight } from '../../lib/format';
@@ -55,7 +56,7 @@ type ColumnSlotProps = {
 // The date is a second, primitive subscription that only fires when the workout's date changes.
 const ColumnSlot = memo(function ColumnSlot({ workoutId, rows, x, today, selectedExerciseId }: ColumnSlotProps) {
   const byExercise = useData((s) => s.entries[workoutId]);
-  const date = useData((s) => s.workouts[workoutId]?.date ?? null);
+  const date = useColumnDate(workoutId);
 
   const cells = [];
   for (const row of rows) {
@@ -104,7 +105,7 @@ const ColumnSlot = memo(function ColumnSlot({ workoutId, rows, x, today, selecte
 type HeaderSlotProps = { workoutId: string; x: number; today: string };
 
 const HeaderSlot = memo(function HeaderSlot({ workoutId, x, today }: HeaderSlotProps) {
-  const date = useData((s) => s.workouts[workoutId]?.date ?? null);
+  const date = useColumnDate(workoutId);
   const label = headerLabel(date, today);
   return (
     <div

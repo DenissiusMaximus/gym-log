@@ -50,11 +50,21 @@ export default function RootLayout() {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') useUi.getState().refreshToday();
     });
-    return () => subscription.remove();
+    // A PWA left open overnight has no resume event, so the day change is polled.
+    const timer = setInterval(() => useUi.getState().refreshToday(), 60_000);
+    return () => {
+      subscription.remove();
+      clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
-    if (hydrated) void requestPersistentStorage();
+    if (!hydrated) return;
+    void requestPersistentStorage();
+    // A new day: empty workouts of earlier days (or without a date) disappear.
+    return useUi.subscribe((st, prev) => {
+      if (st.today !== prev.today) useData.getState().pruneEmptyWorkouts(st.today);
+    });
   }, [hydrated]);
 
   useEffect(() => {

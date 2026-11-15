@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { logError } from '../dev/errorLog';
-import { isValidDate } from '../lib/date';
+import { formatColumnDate, isValidDate } from '../lib/date';
 import { MAX_WEIGHT, round2 } from '../lib/format';
 import { strings } from '../lib/strings';
 import { newId } from './ids';
@@ -17,6 +17,7 @@ import {
 import type { Persist } from './persist';
 import type { Exercise, Meta, Op, SafetySnapshotStore, Snapshot } from './types';
 import { useUi } from './useUi';
+import { activeDraftDate } from './virtualColumns';
 
 export type Undo = () => void;
 
@@ -42,7 +43,16 @@ export type DataActions = {
   setWorkoutDate: (id: string, date: string | null) => { merged: boolean; targetId: string; undo: Undo };
   deleteWorkout: (id: string) => Undo;
 
-  /** An empty array deletes the entry. */
+  /**
+   * Removes workouts without entries whose date is missing or before `today` (not undoable).
+   * The workout open in the entry panel is kept.
+   */
+  pruneEmptyWorkouts: (today: string) => void;
+
+  /**
+   * An empty array deletes the entry. For an id without a workout (a virtual column) the workout
+   * is created together with the entry, if the id is an active draft and the weights are valid.
+   */
   setWeights: (workoutId: string, exerciseId: string, weights: number[]) => void;
   clearEntry: (workoutId: string, exerciseId: string) => Undo;
 
@@ -56,6 +66,9 @@ export type DataState = Tables & { hydrated: boolean } & DataActions;
 const noop: Undo = () => {};
 const now = () => new Date().toISOString();
 const cleanWeight = (w: number) => Math.min(MAX_WEIGHT, Math.max(0, round2(w)));
+
+const hasEntries = (entries: Tables['entries'], workoutId: string) =>
+  Object.keys(entries[workoutId] ?? {}).length > 0;
 
 /** Data part of the state as a snapshot (the shape used by drivers and backups). */
 export function toSnapshot(state: Tables): Snapshot {
@@ -91,6 +104,18 @@ export function createDataStore({ persist, safety }: StoreDeps) {
       set(tablesFromSnapshot(next));
       void persist.replaceAll(next);
       safety.writeNow(next);
+      useUi.getState().renewAllDraftIds();
+    }
+
+    /** Undo that would give two workouts the same date is refused with a message. */
+    function guardDateUndo(undo: Undo, workoutId: string, date: string | null): Undo {
+      return () => {
+        if (date !== null && Object.values(get().workouts).some((w) => w.id !== workoutId && w.date === date)) {
+          useUi.getState().showSnackbar({ text: strings.data.undoConflict(formatColumnDate(date)) });
+          return;
+        }
+        undo();
+      };
     }
 
     persist.setListener({
@@ -155,6 +180,7 @@ export function createDataStore({ persist, safety }: StoreDeps) {
         const snapshot: Snapshot = { ...base, meta: { ...base.meta, rev } };
         persist.init(rev);
         set({ ...tablesFromSnapshot(snapshot), hydrated: true });
+        get().pruneEmptyWorkouts(useUi.getState().today);
 
         if (db === null) useUi.getState().setPersistStatus('failed');
         if (useMirror) {
@@ -300,7 +326,7 @@ export function createDataStore({ persist, safety }: StoreDeps) {
         const target = date === null ? undefined : Object.values(state.workouts).find((w) => w.id !== id && w.date === date);
         if (!target) {
           const undo = commit([{ t: 'put', table: 'workouts', row: { ...workout, date } }]);
-          return { merged: false, targetId: id, undo };
+          return { merged: false, targetId: id, undo: guardDateUndo(undo, id, workout.date) };
         }
 
         // Rule 3: the target keeps its own entries; only missing exercises move over.
@@ -312,22 +338,51 @@ export function createDataStore({ persist, safety }: StoreDeps) {
           ops.push({ t: 'del', table: 'entries', key: [id, entry.exerciseId] });
         }
         ops.push({ t: 'del', table: 'workouts', key: id });
-        return { merged: true, targetId: target.id, undo: commit(ops) };
+        return { merged: true, targetId: target.id, undo: guardDateUndo(commit(ops), id, workout.date) };
       },
 
       deleteWorkout(id) {
         const state = get();
-        if (!state.workouts[id]) return noop;
+        const workout = state.workouts[id];
+        if (!workout) return noop;
         const ops: Op[] = [{ t: 'del', table: 'workouts', key: id }];
         for (const exerciseId of Object.keys(state.entries[id] ?? {})) {
           ops.push({ t: 'del', table: 'entries', key: [id, exerciseId] });
         }
-        return commit(ops);
+        return guardDateUndo(commit(ops), id, workout.date);
+      },
+
+      pruneEmptyWorkouts(today) {
+        const state = get();
+        const skip = useUi.getState().selectedCell?.workoutId;
+        const ops: Op[] = [];
+        for (const workout of Object.values(state.workouts)) {
+          if (workout.id === skip || hasEntries(state.entries, workout.id)) continue;
+          if (workout.date === null || workout.date < today) ops.push({ t: 'del', table: 'workouts', key: workout.id });
+        }
+        commit(ops);
       },
 
       setWeights(workoutId, exerciseId, weights) {
         const state = get();
-        if (!state.workouts[workoutId] || !state.exercises[exerciseId]) return;
+        if (!state.workouts[workoutId]) {
+          // A virtual column: the workout appears together with its first valid weight.
+          if (!state.exercises[exerciseId]) return;
+          const cleaned = weights.filter(Number.isFinite).map(cleanWeight);
+          if (cleaned.length === 0) return;
+          // Refreshing "today" can prune workouts, so it runs before the state is read.
+          useUi.getState().refreshToday();
+          const { draftIds, today } = useUi.getState();
+          const date = activeDraftDate(get().workouts, draftIds, today, workoutId);
+          if (date === undefined) return;
+          commit([
+            { t: 'put', table: 'workouts', row: { id: workoutId, date, createdAt: now() } },
+            { t: 'put', table: 'entries', row: { workoutId, exerciseId, weights: cleaned, updatedAt: now() } },
+          ]);
+          useUi.getState().renewDraftId(workoutId);
+          return;
+        }
+        if (!state.exercises[exerciseId]) return;
         if (weights.length === 0) {
           if (state.entries[workoutId]?.[exerciseId]) {
             commit([{ t: 'del', table: 'entries', key: [workoutId, exerciseId] }]);
@@ -347,14 +402,23 @@ export function createDataStore({ persist, safety }: StoreDeps) {
 
       clearEntry(workoutId, exerciseId) {
         if (!get().entries[workoutId]?.[exerciseId]) return noop;
-        return commit([{ t: 'del', table: 'entries', key: [workoutId, exerciseId] }]);
+        const undo = commit([{ t: 'del', table: 'entries', key: [workoutId, exerciseId] }]);
+        // The workout may have been removed (for example by the day change) before the undo.
+        return () => {
+          if (get().workouts[workoutId]) undo();
+        };
       },
 
       importSnapshot(snapshot) {
         const previous = toSnapshot(get());
         const { meta } = get();
         const filterOk = meta.activeFilter === 'all' || snapshot.groups.some((g) => g.id === meta.activeFilter);
-        replaceState({ ...snapshot, meta: { ...meta, activeFilter: filterOk ? meta.activeFilter : 'all' } });
+        const { today } = useUi.getState();
+        const withEntries = new Set(snapshot.entries.map((e) => e.workoutId));
+        const workouts = snapshot.workouts.filter(
+          (w) => withEntries.has(w.id) || (w.date !== null && w.date >= today),
+        );
+        replaceState({ ...snapshot, workouts, meta: { ...meta, activeFilter: filterOk ? meta.activeFilter : 'all' } });
         return () => replaceState({ ...previous, meta: get().meta });
       },
 

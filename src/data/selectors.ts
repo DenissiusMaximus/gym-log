@@ -1,4 +1,6 @@
 import type { Tables } from './ops';
+import type { DraftIds } from './useUi';
+import { activeDraftDate } from './virtualColumns';
 
 export type DataSlice = Pick<Tables, 'exercises' | 'groups' | 'memberships' | 'workouts' | 'entries'>;
 
@@ -67,31 +69,55 @@ function orderedWorkoutIds(state: DataSlice): string[] {
 
 /**
  * Table columns. For a group a workout is shown if it has an entry for one of the group's
- * exercises, or no entries at all (a fresh column must be visible), or is dated today.
+ * exercises, or no entries at all (a fresh column must be visible), or is dated today, or has
+ * no date. The two virtual columns (`draftIds`) are added while they are active: "today" goes
+ * before the first column with no date or a later date, "no date" goes last.
  */
-export function selectColumnIds(state: DataSlice, filter: string, today: string): string[] {
+export function selectColumnIds(state: DataSlice, filter: string, today: string, draftIds: DraftIds): string[] {
   return memo(
     columnCache,
     `${filter}|${today}`,
-    [state.workouts, state.entries, state.exercises, state.memberships],
+    [state.workouts, state.entries, state.exercises, state.memberships, draftIds.today, draftIds.undated],
     () => {
       const ids = orderedWorkoutIds(state);
-      if (filter === 'all') return ids;
-      const rowIds = selectRowIds(state, filter);
-      return ids.filter((id) => {
-        const workout = state.workouts[id];
-        if (workout.date === today) return true;
-        const byExercise = state.entries[id];
-        if (!byExercise) return true;
-        return rowIds.some((exerciseId) => byExercise[exerciseId] !== undefined);
-      });
+      const real =
+        filter === 'all'
+          ? ids
+          : ids.filter((id) => {
+              const workout = state.workouts[id];
+              if (workout.date === null || workout.date === today) return true;
+              const byExercise = state.entries[id];
+              if (!byExercise) return true;
+              const rowIds = selectRowIds(state, filter);
+              return rowIds.some((exerciseId) => byExercise[exerciseId] !== undefined);
+            });
+      const result = [...real];
+      if (activeDraftDate(state.workouts, draftIds, today, draftIds.today) !== undefined) {
+        const at = result.findIndex((id) => {
+          const date = state.workouts[id].date;
+          return date === null || date > today;
+        });
+        result.splice(at === -1 ? result.length : at, 0, draftIds.today);
+      }
+      if (activeDraftDate(state.workouts, draftIds, today, draftIds.undated) !== undefined) {
+        result.push(draftIds.undated);
+      }
+      return result;
     },
   );
 }
 
-/** Latest dated workout before the current one that has an entry for the exercise. */
-export function selectPrevious(state: DataSlice, exerciseId: string, workoutId: string): Previous | null {
-  const currentDate = state.workouts[workoutId]?.date ?? null;
+/**
+ * Latest dated workout before the current one that has an entry for the exercise. A virtual
+ * column has no workout yet, so its date is passed as `fallbackDate`.
+ */
+export function selectPrevious(
+  state: DataSlice,
+  exerciseId: string,
+  workoutId: string,
+  fallbackDate: string | null = null,
+): Previous | null {
+  const currentDate = state.workouts[workoutId] ? state.workouts[workoutId].date : fallbackDate;
   let best: Previous | null = null;
   for (const workout of Object.values(state.workouts)) {
     if (workout.date === null || workout.id === workoutId) continue;

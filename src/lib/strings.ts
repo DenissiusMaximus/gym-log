@@ -26,6 +26,7 @@ export const strings = {
     restoredFromCopy: 'Data restored from local copy',
     replaced: 'Data replaced',
     merged: (date: string) => `Merged with workout ${date}`,
+    undoConflict: (date: string) => `Can't undo: ${date} already has a workout`,
   },
   persist: {
     failedBanner:
@@ -82,15 +83,10 @@ export const strings = {
     more: 'More',
     settings: 'Settings',
     manage: 'Exercises & groups',
-    newWorkout: 'New workout',
-    today: (date: string) => `Today, ${date}`,
-    noDate: 'No date',
-    goToToday: 'Go to today',
     emptyTitle: "Let's start",
-    emptyBody: 'Add the exercises you do at the gym. Then create workouts and log your weights.',
+    emptyBody: 'Add the exercises you do at the gym. Then tap a cell to log your weights.',
     addExercise: 'Add exercise',
     addExercises: 'Add exercises',
-    noWorkouts: 'Tap + to start a workout',
     emptyGroup: 'No exercises in this group yet',
   },
   column: {
@@ -102,6 +98,8 @@ export const strings = {
     delete: 'Delete',
     deleted: 'Workout deleted',
     mergeWarning: 'There is already a workout on this date - the columns will be merged',
+    another: 'New column for another date...',
+    existsNote: 'There is already a workout on this date - the table will scroll to it',
   },
   entry: {
     unit: 'kg',

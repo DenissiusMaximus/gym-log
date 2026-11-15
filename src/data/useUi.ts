@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import type { ChartPeriod } from '../features/chart/chartMath';
 import { todayStr } from '../lib/date';
+import { newId } from './ids';
 import type { PersistStatus } from './types';
 
 export type SwStatus =
@@ -34,8 +35,15 @@ export type SnackbarOptions = {
 /** The table cell the entry panel is editing. */
 export type SelectedCell = { workoutId: string; exerciseId: string };
 
+/**
+ * Ids of the two virtual columns ("today" and "no date"). They are never stored: a workout with
+ * the draft id appears in the data together with its first weight, then the id is renewed.
+ */
+export type DraftIds = { today: string; undated: string };
+
 type UiState = {
   today: string;
+  draftIds: DraftIds;
   selectedCell: SelectedCell | null;
   /** Period picked on the chart screen; `null` until the first pick (then a default applies). */
   chartPeriod: ChartPeriod | null;
@@ -44,6 +52,9 @@ type UiState = {
   swStatus: SwStatus;
   snackbar: SnackbarMessage | null;
   refreshToday: () => void;
+  /** Gives a draft a new id after its workout was created; does nothing if `id` is not a draft id. */
+  renewDraftId: (id: string) => void;
+  renewAllDraftIds: () => void;
   setSelectedCell: (cell: SelectedCell | null) => void;
   setChartPeriod: (period: ChartPeriod) => void;
   setPersistStatus: (status: PersistStatus) => void;
@@ -59,6 +70,7 @@ let snackbarTimer: ReturnType<typeof setTimeout> | null = null;
 /** Non-persisted UI state: lives until the app is closed. */
 export const useUi = create<UiState>()((set, get) => ({
   today: todayStr(),
+  draftIds: { today: newId(), undated: newId() },
   selectedCell: null,
   chartPeriod: null,
   persistStatus: 'ok',
@@ -69,6 +81,12 @@ export const useUi = create<UiState>()((set, get) => ({
     const today = todayStr();
     if (today !== get().today) set({ today });
   },
+  renewDraftId: (id) => {
+    const { draftIds } = get();
+    if (draftIds.today === id) set({ draftIds: { ...draftIds, today: newId() } });
+    else if (draftIds.undated === id) set({ draftIds: { ...draftIds, undated: newId() } });
+  },
+  renewAllDraftIds: () => set({ draftIds: { today: newId(), undated: newId() } }),
   setSelectedCell: (selectedCell) => set({ selectedCell }),
   setChartPeriod: (chartPeriod) => set({ chartPeriod }),
   setPersistStatus: (persistStatus) => set({ persistStatus }),

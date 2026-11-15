@@ -13,29 +13,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { selectColumnIds, selectRowIds } from '@/data/selectors';
 import { useData } from '@/data/useData';
 import { useUi } from '@/data/useUi';
+import { activeDraftDate } from '@/data/virtualColumns';
 import { CellSheet } from '@/features/home/CellSheet';
 import { ColumnActions } from '@/features/home/ColumnActions';
 import { EmptyState } from '@/features/home/EmptyState';
 import { FilterChips } from '@/features/home/FilterChips';
 import { InstallHint } from '@/features/home/InstallHint';
 import { ExerciseEditorDialog } from '@/features/manage/ExerciseEditorDialog';
-import { HEADER_H, NAME_W } from '@/features/table/metrics';
 import type { WorkoutTableHandle } from '@/features/table/types';
 import { WorkoutTable } from '@/features/table/WorkoutTable';
-import { formatColumnDate } from '@/lib/date';
 import * as haptics from '@/lib/haptics';
 import { strings } from '@/lib/strings';
 import { useTheme } from '@/theme/ThemeProvider';
 import { ActionSheet } from '@/ui/ActionSheet';
-import { FabMenu } from '@/ui/FabMenu';
-import { Text } from '@/ui/Text';
 
 const s = strings.home;
 
-/** Content bottom padding that clears the FAB: 88 dp plus the bottom safe area. */
-const FAB_CLEARANCE = 88;
-/** Snackbars sit this far above the bottom edge so they clear the FAB. */
-const FAB_SNACKBAR_OFFSET = 72;
+/** Content bottom padding below the last row (plus the bottom safe area) while the panel is closed. */
+const BOTTOM_GAP = 16;
 const FILTER_FADE_MS = 150;
 
 type EditorState = { open: boolean; exerciseId: string | null };
@@ -49,6 +44,7 @@ export default function Home() {
   const tableRef = useRef<WorkoutTableHandle>(null);
 
   const today = useUi((st) => st.today);
+  const draftIds = useUi((st) => st.draftIds);
   const selectedCell = useUi((st) => st.selectedCell);
   const groups = useData((st) => st.groups);
   const savedFilter = useData((st) => st.meta.activeFilter);
@@ -65,30 +61,26 @@ export default function Home() {
 
   const rowIds = useData((st) => selectRowIds(st, filter));
   const allRowIds = useData((st) => selectRowIds(st, 'all'));
-  const columnIds = useData((st) => selectColumnIds(st, filter, today));
-  const todayWorkoutId = useData((st) => {
-    for (const workout of Object.values(st.workouts)) if (workout.date === today) return workout.id;
-    return null;
-  });
-  // The panel edits a cell only while both its workout and its (active) exercise exist.
+  const columnIds = useData((st) => selectColumnIds(st, filter, today, draftIds));
+  // The panel edits a cell only while its column (a workout or an active virtual column) and its
+  // (active) exercise exist.
   const cellExists = useData(
     (st) =>
       selectedCell !== null &&
-      st.workouts[selectedCell.workoutId] !== undefined &&
+      (st.workouts[selectedCell.workoutId] !== undefined ||
+        activeDraftDate(st.workouts, draftIds, today, selectedCell.workoutId) !== undefined) &&
       st.exercises[selectedCell.exerciseId]?.archivedAt === null,
   );
   const panelCell = cellExists ? selectedCell : null;
 
   const [sheetHeight, setSheetHeight] = useState(0);
   const [menuWorkoutId, setMenuWorkoutId] = useState<string | null>(null);
-  const [fabOpen, setFabOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [editor, setEditor] = useState<EditorState>({ open: false, exerciseId: null });
   const [scrollRequest, setScrollRequest] = useState<ScrollRequest | null>(null);
 
   const hasExercises = allRowIds.length > 0;
-  const panelOpen = panelCell !== null;
-  const bottomPad = sheetHeight > 0 ? sheetHeight : FAB_CLEARANCE + insets.bottom;
+  const bottomPad = sheetHeight > 0 ? sheetHeight : BOTTOM_GAP + insets.bottom;
 
   // Scrolling runs in an effect so the table already holds the new columns when it moves.
   const columnIdsRef = useRef(columnIds);
@@ -173,12 +165,6 @@ export default function Home() {
     setMoreOpen(true);
   };
 
-  const createWorkout = (date: string | null) => {
-    const id = useData.getState().addWorkout(date);
-    haptics.confirm();
-    revealWorkout(id);
-  };
-
   return (
     <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
       <FilterChips groups={groupList} filter={filter} onSelect={onSelectFilter} onMore={openMore} />
@@ -197,45 +183,20 @@ export default function Home() {
           // A group without exercises: the table would only show dates.
           <EmptyState title={s.emptyGroup} actionLabel={s.addExercises} onAction={openManageForGroup} />
         ) : (
-          <>
-            <WorkoutTable
-              ref={tableRef}
-              rowIds={rowIds}
-              columnIds={columnIds}
-              today={today}
-              selectedCell={panelCell}
-              bottomPad={bottomPad}
-              onCellPress={onCellPress}
-              onHeaderPress={onHeaderPress}
-              onNamePress={onNamePress}
-              onAddExercise={onAddExercise}
-            />
-            {columnIds.length === 0 ? (
-              <View style={styles.hint}>
-                <Text variant="bodyMedium" color="onSurfaceVariant" style={styles.hintText}>
-                  {s.noWorkouts}
-                </Text>
-              </View>
-            ) : null}
-          </>
+          <WorkoutTable
+            ref={tableRef}
+            rowIds={rowIds}
+            columnIds={columnIds}
+            today={today}
+            selectedCell={panelCell}
+            bottomPad={bottomPad}
+            onCellPress={onCellPress}
+            onHeaderPress={onHeaderPress}
+            onNamePress={onNamePress}
+            onAddExercise={onAddExercise}
+          />
         )}
       </Animated.View>
-
-      <FabMenu
-        open={fabOpen}
-        onOpenChange={setFabOpen}
-        accessibilityLabel={s.newWorkout}
-        visible={hasExercises && !panelOpen}
-        items={[
-          {
-            key: 'today',
-            label: todayWorkoutId ? s.goToToday : s.today(formatColumnDate(today)),
-            icon: 'today',
-            onPress: () => (todayWorkoutId ? revealWorkout(todayWorkoutId) : createWorkout(today)),
-          },
-          { key: 'nodate', label: s.noDate, icon: 'event_upcoming', onPress: () => createWorkout(null) },
-        ]}
-      />
 
       <CellSheet cell={panelCell} onClose={closePanel} onHeightChange={setSheetHeight} />
 
@@ -243,7 +204,7 @@ export default function Home() {
         workoutId={menuWorkoutId}
         onClose={closeMenu}
         onReveal={revealWorkout}
-        snackbarOffset={FAB_SNACKBAR_OFFSET}
+        snackbarOffset={0}
       />
 
       <ExerciseEditorDialog
@@ -251,7 +212,7 @@ export default function Home() {
         onClose={closeEditor}
         exerciseId={editor.exerciseId}
         defaultGroupId={filter === 'all' ? null : filter}
-        snackbarOffset={FAB_SNACKBAR_OFFSET}
+        snackbarOffset={0}
       />
 
       <ActionSheet
@@ -269,17 +230,4 @@ export default function Home() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   body: { flex: 1 },
-  // Right of the name column, below the header: where the missing dates would be.
-  hint: {
-    position: 'absolute',
-    top: HEADER_H,
-    left: NAME_W,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    pointerEvents: 'none',
-  },
-  hintText: { textAlign: 'center' },
 });

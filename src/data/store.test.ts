@@ -1,5 +1,10 @@
 import { createTestStore } from './testUtils';
 import type { SafetySnapshotStore, Snapshot } from './types';
+import { useUi } from './useUi';
+
+beforeEach(() => {
+  useUi.setState({ today: '2026-11-15', draftIds: { today: 'DT', undated: 'DU' }, selectedCell: null, snackbar: null });
+});
 
 function setup() {
   const ctx = createTestStore();
@@ -285,6 +290,147 @@ describe('persistence wiring', () => {
     expect(store.getState().exercises.m.name).toBe('Mirror');
     expect(driver.tables.exercises.m).toBeDefined();
     expect(store.getState().meta.rev).toBeGreaterThanOrEqual(9);
+  });
+});
+
+describe('virtual columns', () => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 10, 15, 12));
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('creates the workout and the entry in one commit from the today draft', () => {
+    const { s } = setup();
+    const e = s().addExercise('Bench', []);
+    s().setWeights('DT', e, [50]);
+    expect(s().workouts.DT).toMatchObject({ id: 'DT', date: '2026-11-15' });
+    expect(s().entries.DT[e].weights).toEqual([50]);
+    expect(useUi.getState().draftIds.today).not.toBe('DT');
+    expect(useUi.getState().draftIds.undated).toBe('DU');
+  });
+
+  it('writes both rows in a single commit', () => {
+    const { s, persist } = setup();
+    const e = s().addExercise('Bench', []);
+    const enqueue = jest.spyOn(persist, 'enqueue');
+    s().setWeights('DT', e, [50]);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue.mock.calls[0][0]).toHaveLength(2);
+  });
+
+  it('creates an undated workout from the undated draft', () => {
+    const { s } = setup();
+    const e = s().addExercise('Bench', []);
+    s().setWeights('DU', e, [20]);
+    expect(s().workouts.DU).toMatchObject({ id: 'DU', date: null });
+    expect(useUi.getState().draftIds.undated).not.toBe('DU');
+  });
+
+  it('creates nothing for empty or invalid weights', () => {
+    const { s } = setup();
+    const e = s().addExercise('Bench', []);
+    s().setWeights('DT', e, []);
+    s().setWeights('DT', e, [NaN]);
+    expect(s().workouts).toEqual({});
+    expect(useUi.getState().draftIds.today).toBe('DT');
+  });
+
+  it('creates nothing when today already has a workout or the id is unknown', () => {
+    const { s } = setup();
+    const e = s().addExercise('Bench', []);
+    s().addWorkout('2026-11-15');
+    s().setWeights('DT', e, [50]);
+    s().setWeights('unknown', e, [50]);
+    expect(Object.keys(s().workouts)).toHaveLength(1);
+    expect(s().entries).toEqual({});
+  });
+
+  it('pruneEmptyWorkouts removes empty past and undated workouts only', () => {
+    const { s } = setup();
+    const e = s().addExercise('Bench', []);
+    const past = s().addWorkout('2026-11-01');
+    const undated = s().addWorkout(null);
+    const today = s().addWorkout('2026-11-15');
+    const future = s().addWorkout('2026-11-20');
+    const filled = s().addWorkout('2026-11-02');
+    const open = s().addWorkout('2026-11-03');
+    s().setWeights(filled, e, [10]);
+    useUi.setState({ selectedCell: { workoutId: open, exerciseId: e } });
+    s().pruneEmptyWorkouts('2026-11-15');
+    expect(Object.keys(s().workouts).sort()).toEqual([today, future, filled, open].sort());
+    expect(s().workouts[past]).toBeUndefined();
+    expect(s().workouts[undated]).toBeUndefined();
+  });
+
+  it('hydrate prunes an empty past workout', async () => {
+    const first = setup();
+    first.s().addWorkout('2026-11-01');
+    const keep = first.s().addWorkout('2026-11-16');
+    await first.persist.whenIdle();
+    const second = createTestStore();
+    second.driver.tables = first.driver.tables;
+    await second.store.getState().hydrate();
+    expect(Object.keys(second.store.getState().workouts)).toEqual([keep]);
+  });
+
+  it('importSnapshot drops empty workouts and renews the draft ids', () => {
+    const { s } = setup();
+    const other = createTestStore();
+    const o = other.store.getState();
+    const e = o.addExercise('Bench', []);
+    const empty = o.addWorkout('2026-11-01');
+    const filled = o.addWorkout('2026-11-02');
+    const future = o.addWorkout('2026-11-30');
+    o.setWeights(filled, e, [10]);
+    const state = other.store.getState();
+    s().importSnapshot({
+      exercises: Object.values(state.exercises),
+      groups: [],
+      memberships: [],
+      workouts: Object.values(state.workouts),
+      entries: Object.values(state.entries).flatMap((byExercise) => Object.values(byExercise)),
+      meta: state.meta,
+    });
+    expect(Object.keys(s().workouts).sort()).toEqual([filled, future].sort());
+    expect(s().workouts[empty]).toBeUndefined();
+    expect(useUi.getState().draftIds.today).not.toBe('DT');
+  });
+
+  it('refuses to undo a delete when the date has been taken, with a message', () => {
+    const { s } = setup();
+    const e = s().addExercise('Bench', []);
+    const w = s().addWorkout('2026-11-15');
+    s().setWeights(w, e, [40]);
+    const undo = s().deleteWorkout(w);
+    s().setWeights('DT', e, [50]); // the virtual today becomes a new workout
+    undo();
+    expect(s().workouts[w]).toBeUndefined();
+    expect(Object.values(s().workouts).filter((x) => x.date === '2026-11-15')).toHaveLength(1);
+    expect(useUi.getState().snackbar?.text).toContain('already has a workout');
+  });
+
+  it('refuses to undo a date change when the old date has been taken', () => {
+    const { s } = setup();
+    const w = s().addWorkout('2026-11-10');
+    const result = s().setWorkoutDate(w, '2026-11-12');
+    s().addWorkout('2026-11-10');
+    result.undo();
+    expect(s().workouts[w].date).toBe('2026-11-12');
+    expect(useUi.getState().snackbar?.text).toContain('already has a workout');
+  });
+
+  it('clearEntry undo does nothing when the workout is gone', () => {
+    const { s } = setup();
+    const e = s().addExercise('Bench', []);
+    const w = s().addWorkout('2026-11-01');
+    s().setWeights(w, e, [40]);
+    const undo = s().clearEntry(w, e);
+    s().pruneEmptyWorkouts('2026-11-15');
+    expect(s().workouts[w]).toBeUndefined();
+    undo();
+    expect(s().entries[w]).toBeUndefined();
   });
 });
 
