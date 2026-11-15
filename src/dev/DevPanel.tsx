@@ -165,6 +165,14 @@ export function DevPanel() {
     }
   };
 
+  // Only for checking the crash log: an unhandled error from a timer is fatal on native (the app
+  // closes, the next start shows "crash (previous run)"); on the web it just lands in the log.
+  const simulateCrash = () => {
+    setTimeout(() => {
+      throw new Error('Simulated crash');
+    }, 0);
+  };
+
   const counts = [
     ['exercises', Object.keys(data.exercises).length],
     ['groups', Object.keys(data.groups).length],
@@ -238,6 +246,7 @@ export function DevPanel() {
             <Btn title={s.export} onPress={exportNow} />
             <Btn title={s.import} onPress={importNow} disabled={busy === 'import'} />
             <Btn title={simulating ? s.stopSimulatingFailure : s.simulateFailure} onPress={toggleFailure} />
+            <Btn title={s.simulateCrash} tone="danger" onPress={simulateCrash} />
             <Btn
               title={s.resetCache}
               onPress={() =>

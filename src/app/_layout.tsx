@@ -13,6 +13,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useData } from '@/data/useData';
 import { useUi } from '@/data/useUi';
+import { installCrashLog } from '@/dev/crashLog';
 import { installErrorLog } from '@/dev/errorLog';
 import { AppNotices } from '@/features/system/AppNotices';
 import { WriteFailureLayout } from '@/features/system/WriteFailureBanner';
@@ -24,6 +25,7 @@ import { SnackbarHost } from '@/ui/Snackbar';
 
 SplashScreen.preventAutoHideAsync();
 installErrorLog();
+installCrashLog();
 
 function ThemedStack() {
   const { colors, isDark } = useTheme();

@@ -224,6 +224,7 @@ export const strings = {
     export: 'Export',
     import: 'Import',
     simulateFailure: 'Simulate write failure',
+    simulateCrash: 'Simulate crash',
     stopSimulatingFailure: 'Stop simulating write failure',
     resetCache: 'Reset app cache',
     clearLog: 'Clear log',

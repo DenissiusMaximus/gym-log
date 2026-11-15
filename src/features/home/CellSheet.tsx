@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -211,12 +211,9 @@ function SheetContent({ cell, sheetHeight, onClose }: ContentProps) {
   useEffect(() => {
     pill.set(animateTo(display.replace ? 1 : 0, 'effectsDefault', reduced));
   }, [display.replace, pill, reduced]);
+  const clearContainer = useMemo(() => withAlpha(colors.primaryContainer, 0), [colors.primaryContainer]);
   const pillStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      pill.get(),
-      [0, 1],
-      [withAlpha(colors.primaryContainer, 0), colors.primaryContainer],
-    ),
+    backgroundColor: interpolateColor(pill.get(), [0, 1], [clearContainer, colors.primaryContainer]),
   }));
 
   const valueColor = display.ghost ? valueColors.ghost : display.replace ? valueColors.onPill : valueColors.value;

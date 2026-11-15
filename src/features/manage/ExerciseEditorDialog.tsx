@@ -59,7 +59,10 @@ function EditorBody({ visible, onClose, exerciseId, defaultGroupId, moveContext,
   const position = target ? contextIds.indexOf(target) : -1;
   const showMove = moveContext !== undefined && target !== null;
 
-  const problem = checkExerciseName(name, exercises, target);
+  // After saving, the dialog still fades out for a moment; the live `exercises` already contains the
+  // new name, so the duplicate error must not flash and a second tap must not save twice.
+  const [saved, setSaved] = useState(false);
+  const problem = saved ? null : checkExerciseName(name, exercises, target);
   // Reordering applies at once, like dragging; only name and groups wait for "Done".
   const move = (delta: -1 | 1) => {
     if (!target || moveContext === undefined) return;
@@ -78,7 +81,8 @@ function EditorBody({ visible, onClose, exerciseId, defaultGroupId, moveContext,
   };
 
   const save = () => {
-    if (problem !== null) return;
+    if (saved || problem !== null) return;
+    setSaved(true);
     const state = useData.getState();
     // Only groups that still exist are written (a group may be deleted while the dialog is open).
     const ids = [...groupIds].filter((id) => state.groups[id]);
@@ -89,7 +93,8 @@ function EditorBody({ visible, onClose, exerciseId, defaultGroupId, moveContext,
   };
 
   const archive = () => {
-    if (!target) return;
+    if (!target || saved) return;
+    setSaved(true);
     const state = useData.getState();
     state.archiveExercise(target);
     const { selectedCell, setSelectedCell } = useUi.getState();

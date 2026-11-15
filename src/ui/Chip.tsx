@@ -34,7 +34,7 @@ const RADIUS_SELECTED = 16;
 
 /**
  * MD3 filter chip: height 32, radius 8, 1 px outline. Selecting animates the check mark in
- * (spatial fast), morphs the radius 8 -> 16 (spatial default) and the colors (effects default);
+ * (layout fast, no overshoot), morphs the radius 8 -> 16 (spatial default) and the colors (effects default);
  * pressing scales to 0.96.
  */
 export function Chip({ label, onPress, selected, icon, disabled, accessibilityLabel, style }: Props) {
@@ -48,7 +48,7 @@ export function Chip({ label, onPress, selected, icon, disabled, accessibilityLa
 
   useEffect(() => {
     const to = isSelected ? 1 : 0;
-    check.set(animateTo(to, 'spatialFast', reduced));
+    check.set(animateTo(to, 'layoutFast', reduced));
     morph.set(animateTo(to, 'spatialDefault', reduced));
     tint.set(animateTo(to, 'effectsDefault', reduced));
   }, [isSelected, check, morph, tint, reduced]);
@@ -63,11 +63,11 @@ export function Chip({ label, onPress, selected, icon, disabled, accessibilityLa
   const labelStyle = useAnimatedStyle(() => ({
     color: interpolateColor(tint.get(), [0, 1], [colors.onSurfaceVariant, colors.onSecondaryContainer]),
   }));
-  const checkStyle = useAnimatedStyle(() => ({
-    width: CHECK * check.get(),
-    marginRight: 8 * check.get(),
-    opacity: Math.min(1, check.get()),
-  }));
+  // Clamped: a negative width makes Yoga on Android measure the node by its content.
+  const checkStyle = useAnimatedStyle(() => {
+    const c = Math.max(0, check.get());
+    return { width: CHECK * c, marginRight: 8 * c, opacity: Math.min(1, c) };
+  });
 
   return (
     <PressableSurface

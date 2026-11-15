@@ -26,10 +26,14 @@ function EditorBody({ visible, onClose, groupId, onCreated }: Props) {
   const [name, setName] = useState(() => (groupId ? (useData.getState().groups[groupId]?.name ?? '') : ''));
   const groups = useData((state) => state.groups);
 
-  const problem = checkGroupName(name, groups, target);
+  // After saving, the dialog still fades out for a moment; the live `groups` already contains the
+  // new name, so the duplicate error must not flash and a second tap must not save twice.
+  const [saved, setSaved] = useState(false);
+  const problem = saved ? null : checkGroupName(name, groups, target);
 
   const save = () => {
-    if (problem !== null) return;
+    if (saved || problem !== null) return;
+    setSaved(true);
     const state = useData.getState();
     if (target) state.renameGroup(target, name);
     else onCreated?.(state.addGroup(name));

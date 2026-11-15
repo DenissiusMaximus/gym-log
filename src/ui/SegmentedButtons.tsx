@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -60,23 +60,21 @@ function Segment({ label, selected, position, showCheck, onPress }: SegmentProps
 
   useEffect(() => {
     tint.set(animateTo(selected ? 1 : 0, 'effectsDefault', reduced));
-    check.set(animateTo(selected ? 1 : 0, 'spatialFast', reduced));
+    check.set(animateTo(selected ? 1 : 0, 'layoutFast', reduced));
   }, [selected, tint, check, reduced]);
 
+  // withAlpha is a plain function: it must not be called inside a worklet.
+  const clear = useMemo(() => withAlpha(colors.secondaryContainer, 0), [colors.secondaryContainer]);
   const fill = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(tint.get(), [0, 1], [
-      withAlpha(colors.secondaryContainer, 0),
-      colors.secondaryContainer,
-    ]),
+    backgroundColor: interpolateColor(tint.get(), [0, 1], [clear, colors.secondaryContainer]),
   }));
   const labelColor = useAnimatedStyle(() => ({
     color: interpolateColor(tint.get(), [0, 1], [colors.onSurface, colors.onSecondaryContainer]),
   }));
-  const checkStyle = useAnimatedStyle(() => ({
-    width: CHECK * check.get(),
-    marginRight: 8 * check.get(),
-    opacity: Math.min(1, check.get()),
-  }));
+  const checkStyle = useAnimatedStyle(() => {
+    const c = Math.max(0, check.get());
+    return { width: CHECK * c, marginRight: 8 * c, opacity: Math.min(1, c) };
+  });
 
   return (
     <PressableSurface
