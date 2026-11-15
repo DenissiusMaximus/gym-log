@@ -48,8 +48,12 @@ export function ActionSheet({ visible, onClose, title, actions }: Props) {
             ) : undefined
           }
           onPress={() => {
+            if (!visible) return;
+            // The close renders on its own and at once, so the exit animation starts next frame; the heavy action
+            // runs a frame later and renders while the sheet is already sliding down on the UI thread.
+            // `!visible`: a tap during the exit does not fire a second action.
             onClose();
-            action.onPress();
+            requestAnimationFrame(action.onPress);
           }}
         />
       ))}

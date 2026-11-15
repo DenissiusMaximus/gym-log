@@ -1,7 +1,9 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, {
+  FadeIn,
+  LayoutAnimationConfig,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -32,6 +34,7 @@ const s = strings.home;
 /** Content bottom padding below the last row (plus the bottom safe area) while the panel is closed. */
 const BOTTOM_GAP = 16;
 const FILTER_FADE_MS = 150;
+const FILTER_ENTERING = FadeIn.duration(FILTER_FADE_MS);
 
 type EditorState = { open: boolean; exerciseId: string | null };
 /** `workoutId: null` scrolls to the newest column (the right edge). */
@@ -55,13 +58,16 @@ export default function Home() {
   );
   // A saved group that no longer exists falls back to "All".
   const filter = savedFilter === 'all' || groups[savedFilter] ? savedFilter : 'all';
+  const deferredFilter = useDeferredValue(filter);
+  // Native: the chip updates at once, the table re-renders in the background and fades in when mounted.
+  const tableFilter = Platform.OS === 'web' ? filter : deferredFilter;
   useEffect(() => {
     if (filter !== savedFilter) useData.getState().setMeta({ activeFilter: filter });
   }, [filter, savedFilter]);
 
-  const rowIds = useData((st) => selectRowIds(st, filter));
+  const rowIds = useData((st) => selectRowIds(st, tableFilter));
   const allRowIds = useData((st) => selectRowIds(st, 'all'));
-  const columnIds = useData((st) => selectColumnIds(st, filter, today, draftIds));
+  const columnIds = useData((st) => selectColumnIds(st, tableFilter, today, draftIds));
   // The panel edits a cell only while its column (a workout or an active virtual column) and its
   // (active) exercise exist.
   const cellExists = useData(
@@ -113,10 +119,16 @@ export default function Home() {
     (next: string) => {
       if (next === useData.getState().meta.activeFilter) return;
       closePanel();
-      // Reduced motion: the table content swaps without the fade-in.
-      if (!reduced) fade.set(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: FILTER_FADE_MS })));
+      if (Platform.OS === 'web') {
+        // Reduced motion: the table content swaps without the fade-in.
+        if (!reduced) fade.set(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: FILTER_FADE_MS })));
+        useData.getState().setMeta({ activeFilter: next });
+        setScrollRequest({ workoutId: null, animated: false });
+        return;
+      }
+      // On native the fade is the `entering` of the remounted (`key`) table, which already sits at the newest
+      // dates; an opacity drop here would start before the new table and `scrollRequest` would scroll the old one.
       useData.getState().setMeta({ activeFilter: next });
-      setScrollRequest({ workoutId: null, animated: false });
     },
     [closePanel, fade, reduced],
   );
@@ -157,7 +169,7 @@ export default function Home() {
   // The group is passed along, so the manage screen opens with it already selected.
   const openManageForGroup = () => {
     closePanel();
-    router.push({ pathname: '/manage', params: { group: filter } });
+    router.push({ pathname: '/manage', params: { group: tableFilter } });
   };
 
   const openMore = () => {
@@ -171,31 +183,41 @@ export default function Home() {
       <InstallHint />
 
       <Animated.View style={[styles.body, fadeStyle]}>
-        {!hasExercises ? (
-          <EmptyState
-            icon="fitness_center"
-            title={s.emptyTitle}
-            body={s.emptyBody}
-            actionLabel={s.addExercise}
-            onAction={onAddExercise}
-          />
-        ) : rowIds.length === 0 ? (
-          // A group without exercises: the table would only show dates.
-          <EmptyState title={s.emptyGroup} actionLabel={s.addExercises} onAction={openManageForGroup} />
-        ) : (
-          <WorkoutTable
-            ref={tableRef}
-            rowIds={rowIds}
-            columnIds={columnIds}
-            today={today}
-            selectedCell={panelCell}
-            bottomPad={bottomPad}
-            onCellPress={onCellPress}
-            onHeaderPress={onHeaderPress}
-            onNamePress={onNamePress}
-            onAddExercise={onAddExercise}
-          />
-        )}
+        {/* Native: a new filter mounts the table via the cold-start path (`contentOffset` and the column window
+            right at the newest dates) and fades it in from mount; `skipEntering` skips the fade on first open. */}
+        <LayoutAnimationConfig skipEntering>
+          <Animated.View
+            key={Platform.OS === 'web' ? undefined : tableFilter}
+            entering={Platform.OS === 'web' || reduced ? undefined : FILTER_ENTERING}
+            style={styles.body}
+          >
+            {!hasExercises ? (
+              <EmptyState
+                icon="fitness_center"
+                title={s.emptyTitle}
+                body={s.emptyBody}
+                actionLabel={s.addExercise}
+                onAction={onAddExercise}
+              />
+            ) : rowIds.length === 0 ? (
+              // A group without exercises: the table would only show dates.
+              <EmptyState title={s.emptyGroup} actionLabel={s.addExercises} onAction={openManageForGroup} />
+            ) : (
+              <WorkoutTable
+                ref={tableRef}
+                rowIds={rowIds}
+                columnIds={columnIds}
+                today={today}
+                selectedCell={panelCell}
+                bottomPad={bottomPad}
+                onCellPress={onCellPress}
+                onHeaderPress={onHeaderPress}
+                onNamePress={onNamePress}
+                onAddExercise={onAddExercise}
+              />
+            )}
+          </Animated.View>
+        </LayoutAnimationConfig>
       </Animated.View>
 
       <CellSheet cell={panelCell} onClose={closePanel} onHeightChange={setSheetHeight} />
